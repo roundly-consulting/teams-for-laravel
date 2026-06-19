@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -52,6 +53,15 @@ final class Member extends Model
         return MemberFactory::new();
     }
 
+    /** @return BelongsTo<Team, $this> */
+    public function team(): BelongsTo
+    {
+        /** @var class-string<Team> $model */
+        $model = config('teams.models.team', Team::class);
+
+        return $this->belongsTo($model);
+    }
+
     /** @return MorphTo<Model, $this> */
     public function member(): MorphTo
     {
@@ -69,8 +79,8 @@ final class Member extends Model
 
     public function removeFromTeam(): void
     {
-        $this->delete();
-
-        TeamMemberDeleted::dispatch($this);
+        if ($this->delete()) {
+            TeamMemberDeleted::dispatch($this);
+        }
     }
 }

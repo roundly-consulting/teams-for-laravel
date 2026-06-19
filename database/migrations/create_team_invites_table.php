@@ -15,6 +15,8 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->string('code')->unique();
             $table->string('role');
+            $table->string('email')->nullable()->index();
+            $table->nullableMorphs('invited_by');
             $table->json('meta')->nullable();
             $table->timestamp('expires_at');
             $table->timestamps();

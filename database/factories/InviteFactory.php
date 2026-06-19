@@ -32,4 +32,11 @@ final class InviteFactory extends Factory
             'expires_at' => now()->subDay(),
         ]);
     }
+
+    public function forEmail(string $email): self
+    {
+        return $this->state(fn (): array => [
+            'email' => $email,
+        ]);
+    }
 }

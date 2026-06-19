@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Models\Invite;
+use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Models\TeamRole;
 use RoundlyConsulting\Teams\TeamBuilder;
 use RoundlyConsulting\Teams\Tests\User;
 
@@ -55,4 +58,46 @@ it('transfers ownership fluently', function () {
     (new TeamBuilder($team))->transferOwnershipTo($owner);
 
     expect($team->fresh()->isOwnedBy($owner))->toBeTrue();
+});
+
+it('defines a per-team role override fluently', function () {
+    $team = Team::factory()->create();
+
+    $role = (new TeamBuilder($team))->defineRole('editor', 'Editor', ['posts.publish'], 'Editors');
+
+    expect($role)->toBeInstanceOf(TeamRole::class)
+        ->and($role->permissions->all())->toBe(['posts.publish'])
+        ->and($role->description)->toBe('Editors');
+});
+
+it('approves a join request fluently', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $admin = User::create();
+    $request = JoinRequest::factory()->for($team)->create([
+        'requester_type' => $user->getMorphClass(),
+        'requester_id' => $user->getKey(),
+        'requested_role' => 'admin',
+        'status' => JoinRequestStatus::Pending,
+    ]);
+
+    $member = (new TeamBuilder($team))->approveJoinRequest($request, $admin);
+
+    expect($member->role)->toBe('admin')
+        ->and($request->fresh()->status)->toBe(JoinRequestStatus::Approved);
+});
+
+it('denies a join request fluently', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $admin = User::create();
+    $request = JoinRequest::factory()->for($team)->create([
+        'requester_type' => $user->getMorphClass(),
+        'requester_id' => $user->getKey(),
+        'status' => JoinRequestStatus::Pending,
+    ]);
+
+    $result = (new TeamBuilder($team))->denyJoinRequest($request, $admin);
+
+    expect($result->status)->toBe(JoinRequestStatus::Denied);
 });

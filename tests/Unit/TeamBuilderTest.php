@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Event;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
+use RoundlyConsulting\Teams\Events\InviteResent;
+use RoundlyConsulting\Teams\Events\InviteRevoked;
 use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Team;
@@ -58,6 +61,38 @@ it('transfers ownership fluently', function () {
     (new TeamBuilder($team))->transferOwnershipTo($owner);
 
     expect($team->fresh()->isOwnedBy($owner))->toBeTrue();
+});
+
+it('resends an invite through the builder, rotating its code and expiry', function () {
+    Event::fake([InviteResent::class]);
+
+    $team = Team::factory()->create();
+    $invite = Invite::factory()->for($team)->expired()->create();
+
+    $originalCode = $invite->code;
+
+    $result = (new TeamBuilder($team))->resendInvite($invite);
+
+    expect($result)->toBeInstanceOf(Invite::class)
+        ->and($result->is($invite))->toBeTrue()
+        ->and($result->code)->not->toBe($originalCode)
+        ->and($result->isExpired())->toBeFalse();
+
+    Event::assertDispatched(InviteResent::class, 1);
+});
+
+it('revokes an invite through the builder, returning a boolean', function () {
+    Event::fake([InviteRevoked::class]);
+
+    $team = Team::factory()->create();
+    $invite = Invite::factory()->for($team)->create();
+
+    $result = (new TeamBuilder($team))->revokeInvite($invite);
+
+    expect($result)->toBeTrue()
+        ->and($invite->fresh()->trashed())->toBeTrue();
+
+    Event::assertDispatched(InviteRevoked::class, 1);
 });
 
 it('defines a per-team role override fluently', function () {

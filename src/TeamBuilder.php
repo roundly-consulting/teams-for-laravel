@@ -13,6 +13,8 @@ use RoundlyConsulting\Teams\Actions\CreateInviteAction;
 use RoundlyConsulting\Teams\Actions\DefineTeamRoleAction;
 use RoundlyConsulting\Teams\Actions\DenyJoinRequestAction;
 use RoundlyConsulting\Teams\Actions\RemoveMemberAction;
+use RoundlyConsulting\Teams\Actions\ResendInviteAction;
+use RoundlyConsulting\Teams\Actions\RevokeInviteAction;
 use RoundlyConsulting\Teams\Actions\TransferOwnershipAction;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateInviteData;
@@ -79,6 +81,16 @@ final class TeamBuilder
             meta: $meta,
             maxUses: $maxUses,
         ));
+    }
+
+    public function resendInvite(Invite $invite): Invite
+    {
+        return app(ResendInviteAction::class)->execute($invite);
+    }
+
+    public function revokeInvite(Invite $invite): bool
+    {
+        return app(RevokeInviteAction::class)->execute($invite);
     }
 
     /** @param list<string|Permission> $permissions */

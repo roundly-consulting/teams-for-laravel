@@ -40,3 +40,21 @@ it('ignores prefixed abilities when no team is passed', function () {
 
     expect(Gate::forUser($user)->allows('teams.manage-billing'))->toBeFalse();
 });
+
+it('authorizes the owner ability for the owner only', function () {
+    $owner = User::create();
+    $other = User::create();
+    $team = Team::factory()->create([
+        'owner_type' => $owner->getMorphClass(),
+        'owner_id' => $owner->getKey(),
+    ]);
+
+    expect(Gate::forUser($owner)->allows('teams.owner', $team))->toBeTrue()
+        ->and(Gate::forUser($other)->allows('teams.owner', $team))->toBeFalse();
+});
+
+it('falls through the owner branch when no team is passed', function () {
+    $user = User::create();
+
+    expect(Gate::forUser($user)->allows('teams.owner'))->toBeFalse();
+});

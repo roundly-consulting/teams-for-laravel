@@ -42,6 +42,11 @@ trait HasTeams
         return $this->belongsToTeam($team);
     }
 
+    public function ownsTeam(Team $team): bool
+    {
+        return $team->isOwnedBy($this);
+    }
+
     public function hasTeam(): bool
     {
         return $this->teams()->exists();

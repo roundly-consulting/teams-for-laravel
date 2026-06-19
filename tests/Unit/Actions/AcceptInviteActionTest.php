@@ -63,3 +63,14 @@ it('accepts an email-targeted invite when the email matches', function () {
 
     expect($member->role)->toBe('user');
 });
+
+it('stamps the accepted invite on the new membership', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $invite = Invite::factory()->for($team)->maxUses(5)->create();
+
+    $member = app(AcceptInviteAction::class)->execute($invite, new AcceptInviteData(member: $user));
+
+    expect($member->accepted_invite_id)->toBe($invite->getKey())
+        ->and($member->acceptedInvite->is($invite))->toBeTrue();
+});

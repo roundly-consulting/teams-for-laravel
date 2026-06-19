@@ -29,6 +29,12 @@ final class AddMemberAction
                 $existing->update(['expires_at' => $data->expiresAt]);
             }
 
+            // Preserve the originally accepted invite: only stamp it when the
+            // membership has none yet, so a re-add never rewrites the seat link.
+            if ($data->acceptedInviteId !== null && $existing->accepted_invite_id === null) {
+                $existing->update(['accepted_invite_id' => $data->acceptedInviteId]);
+            }
+
             if ($existing->role !== $data->role) {
                 $previousRole = $existing->role;
                 $existing->update(['role' => $data->role]);
@@ -46,6 +52,7 @@ final class AddMemberAction
             'role' => $data->role,
             'meta' => new Collection($data->meta),
             'expires_at' => $data->expiresAt,
+            'accepted_invite_id' => $data->acceptedInviteId,
         ]);
 
         TeamMemberAdded::dispatch($created);

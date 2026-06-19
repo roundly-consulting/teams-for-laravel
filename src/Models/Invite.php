@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -83,6 +84,51 @@ final class Invite extends Model
     public function invitedBy(): MorphTo
     {
         return $this->morphTo('invited_by');
+    }
+
+    /**
+     * The members who joined the team by accepting this invite — the
+     * authoritative seat-pool roster.
+     *
+     * @return HasMany<Member, $this>
+     */
+    public function acceptedMembers(): HasMany
+    {
+        /** @var class-string<Member> $model */
+        $model = config('teams.models.member', Member::class);
+
+        return $this->hasMany($model, 'accepted_invite_id');
+    }
+
+    /**
+     * Readable alias of {@see acceptedMembers()} for seat-pool contexts.
+     *
+     * @return HasMany<Member, $this>
+     */
+    public function consumers(): HasMany
+    {
+        return $this->acceptedMembers();
+    }
+
+    public function consumedSeats(): int
+    {
+        return $this->uses;
+    }
+
+    public function remainingSeats(): ?int
+    {
+        if ($this->max_uses === null) {
+            return null;
+        }
+
+        return max(0, $this->max_uses - $this->uses);
+    }
+
+    public function hasRemainingSeats(): bool
+    {
+        $remaining = $this->remainingSeats();
+
+        return $remaining === null || $remaining > 0;
     }
 
     /**

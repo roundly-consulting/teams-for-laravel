@@ -22,6 +22,7 @@ final class MemberFactory extends Factory
             'member_type' => 'user',
             'member_id' => fake()->numberBetween(1, 1000),
             'role' => 'user',
+            'accepted_invite_id' => null,
             'meta' => [],
             'expires_at' => null,
         ];

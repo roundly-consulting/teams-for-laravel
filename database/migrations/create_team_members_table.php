@@ -15,6 +15,8 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->morphs('member');
             $table->string('role')->nullable();
+            $table->foreignId('accepted_invite_id')->nullable()->index()
+                ->constrained('team_invites')->nullOnDelete();
             $table->json('meta')->nullable();
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();

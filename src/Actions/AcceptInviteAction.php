@@ -40,6 +40,7 @@ final class AcceptInviteAction
         $member = $this->addMember->execute($team, new AddMemberData(
             member: $data->member,
             role: $invite->role,
+            acceptedInviteId: (int) $invite->getKey(),
         ));
 
         $invite->increment('uses');

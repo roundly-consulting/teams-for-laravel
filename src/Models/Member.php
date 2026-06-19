@@ -25,6 +25,7 @@ use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
  * @property string $member_type
  * @property int $member_id
  * @property string|null $role
+ * @property int|null $accepted_invite_id
  * @property Collection<string, mixed> $meta
  * @property CarbonInterface|null $expires_at
  * @property CarbonInterface|null $created_at
@@ -51,6 +52,7 @@ final class Member extends Model
         return [
             'meta' => 'collection',
             'expires_at' => 'datetime',
+            'accepted_invite_id' => 'integer',
         ];
     }
 
@@ -72,6 +74,15 @@ final class Member extends Model
     public function member(): MorphTo
     {
         return $this->morphTo('member');
+    }
+
+    /** @return BelongsTo<Invite, $this> */
+    public function acceptedInvite(): BelongsTo
+    {
+        /** @var class-string<Invite> $model */
+        $model = config('teams.models.invite', Invite::class);
+
+        return $this->belongsTo($model, 'accepted_invite_id');
     }
 
     /**

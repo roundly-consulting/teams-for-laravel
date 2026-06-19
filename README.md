@@ -355,12 +355,36 @@ $invite->acceptBy(Model $member, ?string $email = null): Member;
 $invite->resend(): Invite;                // rotate the code and extend expiry
 $invite->revoke(): bool;
 
+// The same resend/revoke operations are also callable from the team builder.
+Teams::for($team)->resendInvite($invite); // returns the refreshed Invite
+Teams::for($team)->revokeInvite($invite); // returns bool
+
 // Accept in one call by code (resolves the invite for you).
 Teams::acceptInviteByCode($code, $user);
 
 Invite::query()->pending();               // not yet expired
 Invite::query()->forEmail('jane@acme.test');
 ```
+
+Multi-use ("seat pool") invites record which members joined through them, so you can render a
+seat ledger and audit who consumed a link:
+
+```php
+$invite = Teams::for($team)->invite(role: 'member', maxUses: 5);
+// ... three people accept ...
+
+$invite->consumedSeats();      // 3
+$invite->remainingSeats();     // 2  (null when max_uses is null / unlimited)
+$invite->hasRemainingSeats();  // true
+$invite->acceptedMembers();    // HasMany<Member> — the roster, eager-loadable / paginatable
+$invite->consumers();          // readable alias of acceptedMembers()
+
+// From the member side:
+$member->acceptedInvite;       // the Invite this member joined through (or null)
+```
+
+Force-deleting (or hard-pruning) an invite nulls `accepted_invite_id` on its members rather
+than deleting them, so the membership roster is never lost to invite cleanup.
 
 Each accept increments the invite's `uses`; a single-use invite is deleted on its first
 accept (the original behaviour), while a multi-use invite survives until exhausted. Accepting

@@ -7,6 +7,7 @@ use RoundlyConsulting\Teams\Actions\AddMemberAction;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Events\TeamMemberAdded;
 use RoundlyConsulting\Teams\Events\TeamMemberRoleChanged;
+use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Tests\User;
@@ -94,4 +95,64 @@ it('overwrites the expiry when re-adding with a new one', function () {
     $second = app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin', expiresAt: now()->addDays(60)));
 
     expect($second->expires_at->toDateString())->toBe(now()->addDays(60)->toDateString());
+});
+
+it('adds a member without an accepted invite by default', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+
+    $member = app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin'));
+
+    expect($member->accepted_invite_id)->toBeNull();
+});
+
+it('stamps the accepted invite when supplied on create', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $invite = Invite::factory()->for($team)->create();
+
+    $member = app(AddMemberAction::class)->execute($team, new AddMemberData(
+        member: $user,
+        role: 'admin',
+        acceptedInviteId: (int) $invite->getKey(),
+    ));
+
+    expect($member->accepted_invite_id)->toBe($invite->getKey());
+});
+
+it('preserves the original accepted invite on idempotent re-add', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $first = Invite::factory()->for($team)->create();
+    $second = Invite::factory()->for($team)->create();
+
+    app(AddMemberAction::class)->execute($team, new AddMemberData(
+        member: $user,
+        role: 'admin',
+        acceptedInviteId: (int) $first->getKey(),
+    ));
+
+    $reAdded = app(AddMemberAction::class)->execute($team, new AddMemberData(
+        member: $user,
+        role: 'admin',
+        acceptedInviteId: (int) $second->getKey(),
+    ));
+
+    expect($reAdded->accepted_invite_id)->toBe($first->getKey());
+});
+
+it('stamps the accepted invite on re-add when the membership had none', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $invite = Invite::factory()->for($team)->create();
+
+    app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin'));
+
+    $reAdded = app(AddMemberAction::class)->execute($team, new AddMemberData(
+        member: $user,
+        role: 'admin',
+        acceptedInviteId: (int) $invite->getKey(),
+    ));
+
+    expect($reAdded->accepted_invite_id)->toBe($invite->getKey());
 });

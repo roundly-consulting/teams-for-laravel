@@ -15,5 +15,6 @@ final readonly class AddMemberData
         public string $role,
         public array $meta = [],
         public ?CarbonInterface $expiresAt = null,
+        public ?int $acceptedInviteId = null,
     ) {}
 }

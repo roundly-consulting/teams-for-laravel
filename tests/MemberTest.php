@@ -17,6 +17,7 @@ it('has correct casts', function () {
         'id' => 'int',
         'meta' => 'collection',
         'expires_at' => 'datetime',
+        'accepted_invite_id' => 'integer',
         'deleted_at' => 'datetime',
     ]);
 });

@@ -6,13 +6,39 @@ namespace RoundlyConsulting\Teams\Roles;
 
 final class Role
 {
-    /** @param list<string> $permissions */
+    /** @var list<string> */
+    public array $permissions;
+
+    /** @var list<Permission> */
+    public array $permissionObjects;
+
+    /** @param list<string|Permission> $permissions */
     public function __construct(
         public string $key,
         public string $name,
-        public array $permissions,
+        array $permissions,
         public string $description = '',
-    ) {}
+    ) {
+        $this->setPermissions($permissions);
+    }
+
+    /** @param list<string|Permission> $permissions */
+    public function setPermissions(array $permissions): self
+    {
+        $objects = [];
+        $keys = [];
+
+        foreach ($permissions as $permission) {
+            $object = $permission instanceof Permission ? $permission : new Permission($permission);
+            $objects[] = $object;
+            $keys[] = $object->key;
+        }
+
+        $this->permissionObjects = $objects;
+        $this->permissions = $keys;
+
+        return $this;
+    }
 
     public function description(string $description): self
     {
@@ -23,7 +49,12 @@ final class Role
 
     public function hasPermission(string $name): bool
     {
-        return in_array($name, $this->permissions, true);
+        if ($name === '') {
+            return false;
+        }
+
+        return in_array('*', $this->permissions, true)
+            || in_array($name, $this->permissions, true);
     }
 
     /** @param list<string> $names */

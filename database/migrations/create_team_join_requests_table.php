@@ -20,6 +20,7 @@ return new class extends Migration
             $table->json('meta')->nullable();
             $table->nullableMorphs('responded_by');
             $table->timestamp('responded_at')->nullable();
+            $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
             $table->softDeletes();
         });

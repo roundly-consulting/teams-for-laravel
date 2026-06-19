@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Facade;
 use RoundlyConsulting\Teams\Actions\AcceptInviteAction;
@@ -70,6 +71,7 @@ class Teams
         ?string $requestedRole = null,
         ?string $message = null,
         array $meta = [],
+        ?CarbonInterface $expiresAt = null,
     ): JoinRequest {
         return app(RequestToJoinAction::class)->execute(new RequestToJoinData(
             team: $team,
@@ -77,6 +79,7 @@ class Teams
             requestedRole: $requestedRole,
             message: $message,
             meta: $meta,
+            expiresAt: $expiresAt,
         ));
     }
 

@@ -98,6 +98,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Join requests
+    |--------------------------------------------------------------------------
+    |
+    | Join requests are opt-in expiring: pass an "expiresAt" to
+    | Teams::requestToJoin() and "teams:join-requests:prune" auto-declines any
+    | pending request whose expiry has passed (firing JoinRequestExpired). A
+    | null expiry never lapses, preserving the original behaviour. "prune_after"
+    | is the relative interval, measured from a request's last update, after
+    | which "php artisan model:prune" force-deletes resolved (non-pending) rows.
+    |
+    */
+
+    'join_requests' => [
+        'prune_after' => env('TEAMS_JOIN_REQUESTS_PRUNE_AFTER', '30 days'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gate & permissions
     |--------------------------------------------------------------------------
     |

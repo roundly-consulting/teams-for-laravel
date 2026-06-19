@@ -8,6 +8,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -27,6 +28,7 @@ use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
  * @property string|null $responded_by_type
  * @property int|null $responded_by_id
  * @property CarbonInterface|null $responded_at
+ * @property CarbonInterface|null $expires_at
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
@@ -36,6 +38,7 @@ final class JoinRequest extends Model
     /** @use HasFactory<JoinRequestFactory> */
     use HasFactory;
 
+    use Prunable;
     use SoftDeletes;
 
     /** @var string */
@@ -51,6 +54,7 @@ final class JoinRequest extends Model
             'status' => JoinRequestStatus::class,
             'meta' => 'collection',
             'responded_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
     }
 
@@ -85,6 +89,11 @@ final class JoinRequest extends Model
         return $this->status === JoinRequestStatus::Pending;
     }
 
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
     /**
      * @param  Builder<JoinRequest>  $query
      * @return Builder<JoinRequest>
@@ -92,5 +101,29 @@ final class JoinRequest extends Model
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', JoinRequestStatus::Pending->value);
+    }
+
+    /**
+     * Pending requests whose expiry has passed — the auto-decline candidates.
+     *
+     * @param  Builder<JoinRequest>  $query
+     * @return Builder<JoinRequest>
+     */
+    public function scopeExpiredPending(Builder $query): Builder
+    {
+        return $query->pending()
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now());
+    }
+
+    /** @return Builder<JoinRequest> */
+    public function prunable(): Builder
+    {
+        /** @var string $after */
+        $after = config('teams.join_requests.prune_after', '30 days');
+
+        return self::query()
+            ->where('status', '!=', JoinRequestStatus::Pending->value)
+            ->where('updated_at', '<=', now()->sub($after));
     }
 }

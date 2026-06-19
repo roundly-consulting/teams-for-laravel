@@ -13,6 +13,7 @@ use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
 use RoundlyConsulting\Teams\Commands\MakePolicyCommand;
 use RoundlyConsulting\Teams\Commands\PruneInvitesCommand;
+use RoundlyConsulting\Teams\Commands\PruneJoinRequestsCommand;
 use RoundlyConsulting\Teams\Commands\PruneMembersCommand;
 use RoundlyConsulting\Teams\Commands\ResendInviteCommand;
 use RoundlyConsulting\Teams\Models\Team;
@@ -60,6 +61,7 @@ final class TeamsServiceProvider extends ServiceProvider
                 ListPermissionsCommand::class,
                 PruneInvitesCommand::class,
                 PruneMembersCommand::class,
+                PruneJoinRequestsCommand::class,
                 ResendInviteCommand::class,
                 MakePolicyCommand::class,
             ]);

@@ -25,6 +25,21 @@ final class JoinRequestFactory extends Factory
             'status' => JoinRequestStatus::Pending,
             'message' => null,
             'meta' => [],
+            'expires_at' => null,
         ];
+    }
+
+    public function expired(): self
+    {
+        return $this->state(fn (): array => [
+            'expires_at' => now()->subDay(),
+        ]);
+    }
+
+    public function expiringWithin(int $days): self
+    {
+        return $this->state(fn (): array => [
+            'expires_at' => now()->addDays($days),
+        ]);
     }
 }

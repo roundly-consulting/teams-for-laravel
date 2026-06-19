@@ -35,6 +35,7 @@ final class RequestToJoinAction
             'status' => JoinRequestStatus::Pending,
             'message' => $data->message,
             'meta' => new Collection($data->meta),
+            'expires_at' => $data->expiresAt,
         ]);
 
         JoinRequestCreated::dispatch($request);

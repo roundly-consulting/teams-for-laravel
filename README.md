@@ -96,6 +96,10 @@ return [
         'prune_after' => env('TEAMS_MEMBERS_PRUNE_AFTER', '30 days'),
     ],
 
+    'join_requests' => [
+        'prune_after' => env('TEAMS_JOIN_REQUESTS_PRUNE_AFTER', '30 days'),
+    ],
+
     'gate' => [
         'register' => (bool) env('TEAMS_REGISTER_GATE', true),
         'prefix' => env('TEAMS_GATE_PREFIX', 'teams'),
@@ -128,6 +132,7 @@ return [
 | `invites.expires_after`          | `string`       | `7 days`             | `TEAMS_INVITES_EXPIRES_AFTER`  | Relative interval used as the default invite expiry when none is supplied.       |
 | `invites.code_length`            | `int`          | `32`                 | `TEAMS_INVITES_CODE_LENGTH`    | Length of the generated random invite code.                                      |
 | `members.prune_after`            | `string`       | `30 days`            | `TEAMS_MEMBERS_PRUNE_AFTER`    | Interval after a membership's expiry before `teams:members:prune` deletes it.     |
+| `join_requests.prune_after`      | `string`       | `30 days`            | `TEAMS_JOIN_REQUESTS_PRUNE_AFTER` | Interval after a resolved request's update before `model:prune` deletes it.    |
 | `gate.register`                  | `bool`         | `true`               | `TEAMS_REGISTER_GATE`          | Register Laravel Gate abilities and Blade directives for team permissions.       |
 | `gate.prefix`                    | `string`       | `teams`              | `TEAMS_GATE_PREFIX`            | Ability-name prefix, e.g. `teams.manage-billing`.                                |
 | `gate.owner_ability`             | `string`       | `owner`              | `TEAMS_GATE_OWNER_ABILITY`     | Short ability that resolves to team ownership: `teams.owner`.                     |
@@ -185,8 +190,9 @@ $invite = app(CreateInviteAction::class)->execute($team, new CreateInviteData(
 Available actions: `CreateTeamAction`, `AddMemberAction`, `RemoveMemberAction`,
 `ChangeMemberRoleAction`, `CreateInviteAction`, `AcceptInviteAction`, `ResendInviteAction`,
 `RevokeInviteAction`, `TransferOwnershipAction`, `PruneInvitesAction`,
-`PruneExpiredMembersAction`, `DefineTeamRoleAction`, `RequestToJoinAction`,
-`ApproveJoinRequestAction`, `DenyJoinRequestAction`. Their DTOs live in
+`PruneExpiredMembersAction`, `DispatchExpiringMembershipsAction`, `DefineTeamRoleAction`,
+`RequestToJoinAction`, `ApproveJoinRequestAction`, `DenyJoinRequestAction`,
+`ExpireJoinRequestsAction`. Their DTOs live in
 `RoundlyConsulting\Teams\DataTransferObjects`.
 
 ### Defining team roles
@@ -414,6 +420,25 @@ $team->joinRequests()->pending()->get();
 Approving resolves the role from the responder override, then the requested role, then
 `roles.default`. Approving or denying a non-pending request is a guarded no-op.
 
+Join requests can optionally expire. Pass `expiresAt` to set a deadline; a `null` expiry
+(the default) never lapses, preserving the original behaviour. `teams:join-requests:prune`
+auto-declines any pending request whose expiry has passed — reusing the `Denied` status with a
+**null responder** (system-decided) and firing `JoinRequestExpired`:
+
+```php
+$request = Teams::requestToJoin($team, $user, requestedRole: 'member', expiresAt: now()->addDays(14));
+
+$request->isExpired();                      // true once the deadline passes
+JoinRequest::query()->expiredPending();     // pending requests past their expiry
+
+// Schedule the lifecycle (in routes/console.php):
+// Schedule::command('teams:join-requests:prune')->daily();  // auto-decline + JoinRequestExpired
+// Schedule::command('model:prune')->daily();                // hard-delete long-resolved rows
+```
+
+Resolved requests are hard-deleted by `php artisan model:prune` once older than
+`config('teams.join_requests.prune_after')`, mirroring invites and members.
+
 ### Roles and permissions
 
 ```php
@@ -494,6 +519,8 @@ php artisan teams:permissions           # list registered permissions and their 
 php artisan teams:invites:prune         # delete invites that expired over a month ago
 php artisan teams:invites:resend {code} # rotate an invite's code and extend its expiry
 php artisan teams:members:prune         # delete members expired beyond the retention window
+php artisan teams:members:expiring      # report memberships expiring soon (--days, --notify)
+php artisan teams:join-requests:prune   # auto-decline pending requests past their expiry
 php artisan teams:policy {name}         # scaffold a team-scoped policy (--force to overwrite)
 ```
 
@@ -566,7 +593,9 @@ The package dispatches events you can listen to without forking:
 | `RoundlyConsulting\Teams\Events\JoinRequestCreated`          | A user requests to join a team.          |
 | `RoundlyConsulting\Teams\Events\JoinRequestApproved`         | A join request is approved.              |
 | `RoundlyConsulting\Teams\Events\JoinRequestDenied`           | A join request is denied.                |
+| `RoundlyConsulting\Teams\Events\JoinRequestExpired`          | A pending join request auto-declines on expiry. |
 | `RoundlyConsulting\Teams\Events\MembershipExpired`           | An expired membership is pruned.         |
+| `RoundlyConsulting\Teams\Events\MembershipExpiringSoon`      | A membership lapses within the report window (`--notify`). |
 
 ```php
 use Illuminate\Support\Facades\Event;

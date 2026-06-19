@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\DataTransferObjects;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
 final readonly class AddMemberData
@@ -13,5 +14,6 @@ final readonly class AddMemberData
         public Model $member,
         public string $role,
         public array $meta = [],
+        public ?CarbonInterface $expiresAt = null,
     ) {}
 }

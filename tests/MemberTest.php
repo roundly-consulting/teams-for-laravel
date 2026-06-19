@@ -16,6 +16,7 @@ it('has correct casts', function () {
     expect($member->getCasts())->toBe([
         'id' => 'int',
         'meta' => 'collection',
+        'expires_at' => 'datetime',
         'deleted_at' => 'datetime',
     ]);
 });

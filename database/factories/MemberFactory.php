@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Database\Factories;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
@@ -22,6 +23,21 @@ final class MemberFactory extends Factory
             'member_id' => fake()->numberBetween(1, 1000),
             'role' => 'user',
             'meta' => [],
+            'expires_at' => null,
         ];
+    }
+
+    public function expired(): self
+    {
+        return $this->state(fn (): array => [
+            'expires_at' => now()->subDay(),
+        ]);
+    }
+
+    public function expiringAt(CarbonInterface $expiresAt): self
+    {
+        return $this->state(fn (): array => [
+            'expires_at' => $expiresAt,
+        ]);
     }
 }

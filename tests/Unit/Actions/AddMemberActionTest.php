@@ -59,3 +59,39 @@ it('updates the role when re-adding an existing member with a different role', f
 
     Event::assertDispatched(fn (TeamMemberRoleChanged $e) => $e->member->is($updated) && $e->previousRole === 'user');
 });
+
+it('persists an expiry on create', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $expiresAt = now()->addDays(30);
+
+    $member = app(AddMemberAction::class)->execute($team, new AddMemberData(
+        member: $user,
+        role: 'admin',
+        expiresAt: $expiresAt,
+    ));
+
+    expect($member->expires_at->toDateString())->toBe($expiresAt->toDateString());
+});
+
+it('keeps an existing expiry when re-adding without one', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $expiresAt = now()->addDays(30);
+
+    app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin', expiresAt: $expiresAt));
+    $second = app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin'));
+
+    expect($second->expires_at)->not->toBeNull()
+        ->and($second->expires_at->toDateString())->toBe($expiresAt->toDateString());
+});
+
+it('overwrites the expiry when re-adding with a new one', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+
+    app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin', expiresAt: now()->addDays(5)));
+    $second = app(AddMemberAction::class)->execute($team, new AddMemberData(member: $user, role: 'admin', expiresAt: now()->addDays(60)));
+
+    expect($second->expires_at->toDateString())->toBe(now()->addDays(60)->toDateString());
+});

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->morphs('member');
             $table->string('role')->nullable();
             $table->json('meta')->nullable();
+            $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
             $table->softDeletes();
         });

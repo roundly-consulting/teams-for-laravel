@@ -23,6 +23,12 @@ final class AddMemberAction
         $existing = $team->findMember($data->member);
 
         if ($existing !== null) {
+            // Only overwrite the expiry when one is explicitly supplied, so an
+            // idempotent re-add does not silently clear an existing expiry.
+            if ($data->expiresAt !== null) {
+                $existing->update(['expires_at' => $data->expiresAt]);
+            }
+
             if ($existing->role !== $data->role) {
                 $previousRole = $existing->role;
                 $existing->update(['role' => $data->role]);
@@ -39,6 +45,7 @@ final class AddMemberAction
             'member_id' => $data->member->getKey(),
             'role' => $data->role,
             'meta' => new Collection($data->meta),
+            'expires_at' => $data->expiresAt,
         ]);
 
         TeamMemberAdded::dispatch($created);

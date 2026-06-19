@@ -1,0 +1,55 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Listeners;
+
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Facades\Notification;
+use RoundlyConsulting\Teams\Events\InviteCreated;
+use RoundlyConsulting\Teams\Events\TeamMemberAdded;
+use RoundlyConsulting\Teams\Events\TeamMemberRoleChanged;
+
+/**
+ * Turns team events into notifications on a queue. Register it in your
+ * EventServiceProvider's $subscribe array and supply your own Notification
+ * classes — the package ships the wiring, you own the content.
+ */
+class TeamEventSubscriber implements ShouldQueue
+{
+    public string $connection;
+
+    public function __construct()
+    {
+        $this->connection = (string) config('teams.notifications.queue_connection', config('queue.default'));
+    }
+
+    public function handleMemberAdded(TeamMemberAdded $event): void
+    {
+        // Notification::send($event->member->member, new YourMemberAddedNotification($event->member));
+    }
+
+    public function handleRoleChanged(TeamMemberRoleChanged $event): void
+    {
+        // Notification::send($event->member->member, new YourRoleChangedNotification($event->member));
+    }
+
+    public function handleInviteCreated(InviteCreated $event): void
+    {
+        // if ($event->invite->email) {
+        //     Notification::route('mail', $event->invite->email)
+        //         ->notify(new YourInviteNotification($event->invite));
+        // }
+    }
+
+    /** @return array<class-string, string> */
+    public function subscribe(Dispatcher $events): array
+    {
+        return [
+            TeamMemberAdded::class => 'handleMemberAdded',
+            TeamMemberRoleChanged::class => 'handleRoleChanged',
+            InviteCreated::class => 'handleInviteCreated',
+        ];
+    }
+}

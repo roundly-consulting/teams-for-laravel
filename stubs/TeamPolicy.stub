@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Model;
+use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Policies\AbstractTeamPolicy;
+
+class {{ class }} extends AbstractTeamPolicy
+{
+    public function view(Model $user, Team $team): bool
+    {
+        return $this->allows($user, $team, 'team.view');
+    }
+
+    public function update(Model $user, Team $team): bool
+    {
+        return $this->allows($user, $team, 'team.update');
+    }
+
+    public function delete(Model $user, Team $team): bool
+    {
+        return $this->allows($user, $team, 'team.delete');
+    }
+}

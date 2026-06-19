@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|--------------------------------------------------------------------------
+| Teams Pest Expectations
+|--------------------------------------------------------------------------
+|
+| Require this file from your tests/Pest.php to register team matchers:
+|
+|     expect($user)->toBeMemberOf($team);
+|     expect($user)->withRole($team, 'admin');
+|     expect($user)->toHaveTeamPermission($team, 'posts.publish');
+|
+*/
+
+use RoundlyConsulting\Teams\Testing\TeamExpectations;
+
+TeamExpectations::register();

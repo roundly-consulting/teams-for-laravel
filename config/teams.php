@@ -89,11 +89,14 @@ return [
     |
     | "prune_after" is the relative interval, measured from a membership's
     | expiry, after which "teams:members:prune" force-deletes the audit row.
+    | "expiring_within" is the default window (in days) for the
+    | "teams:members:expiring" report and the MembershipExpiringSoon event.
     |
     */
 
     'members' => [
         'prune_after' => env('TEAMS_MEMBERS_PRUNE_AFTER', '30 days'),
+        'expiring_within' => (int) env('TEAMS_MEMBERS_EXPIRING_WITHIN', 7),
     ],
 
     /*

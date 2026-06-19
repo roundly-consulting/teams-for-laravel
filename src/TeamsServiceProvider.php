@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
 use RoundlyConsulting\Teams\Commands\MakePolicyCommand;
+use RoundlyConsulting\Teams\Commands\MembersExpiringCommand;
 use RoundlyConsulting\Teams\Commands\PruneInvitesCommand;
 use RoundlyConsulting\Teams\Commands\PruneJoinRequestsCommand;
 use RoundlyConsulting\Teams\Commands\PruneMembersCommand;
@@ -62,6 +63,7 @@ final class TeamsServiceProvider extends ServiceProvider
                 PruneInvitesCommand::class,
                 PruneMembersCommand::class,
                 PruneJoinRequestsCommand::class,
+                MembersExpiringCommand::class,
                 ResendInviteCommand::class,
                 MakePolicyCommand::class,
             ]);

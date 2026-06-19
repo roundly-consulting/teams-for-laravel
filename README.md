@@ -94,6 +94,7 @@ return [
 
     'members' => [
         'prune_after' => env('TEAMS_MEMBERS_PRUNE_AFTER', '30 days'),
+        'expiring_within' => (int) env('TEAMS_MEMBERS_EXPIRING_WITHIN', 7),
     ],
 
     'join_requests' => [
@@ -132,6 +133,7 @@ return [
 | `invites.expires_after`          | `string`       | `7 days`             | `TEAMS_INVITES_EXPIRES_AFTER`  | Relative interval used as the default invite expiry when none is supplied.       |
 | `invites.code_length`            | `int`          | `32`                 | `TEAMS_INVITES_CODE_LENGTH`    | Length of the generated random invite code.                                      |
 | `members.prune_after`            | `string`       | `30 days`            | `TEAMS_MEMBERS_PRUNE_AFTER`    | Interval after a membership's expiry before `teams:members:prune` deletes it.     |
+| `members.expiring_within`        | `int`          | `7`                  | `TEAMS_MEMBERS_EXPIRING_WITHIN` | Default window (days) for `teams:members:expiring` and `MembershipExpiringSoon`. |
 | `join_requests.prune_after`      | `string`       | `30 days`            | `TEAMS_JOIN_REQUESTS_PRUNE_AFTER` | Interval after a resolved request's update before `model:prune` deletes it.    |
 | `gate.register`                  | `bool`         | `true`               | `TEAMS_REGISTER_GATE`          | Register Laravel Gate abilities and Blade directives for team permissions.       |
 | `gate.prefix`                    | `string`       | `teams`              | `TEAMS_GATE_PREFIX`            | Ability-name prefix, e.g. `teams.manage-billing`.                                |
@@ -438,6 +440,32 @@ JoinRequest::query()->expiredPending();     // pending requests past their expir
 
 Resolved requests are hard-deleted by `php artisan model:prune` once older than
 `config('teams.join_requests.prune_after')`, mirroring invites and members.
+
+### Expiring-membership reports and renewals
+
+`teams:members:expiring` lists memberships lapsing within a window so you can send renewal
+reminders before access is lost. It is **read-only by default** — events fire only with
+`--notify`. Already-expired and never-expiring memberships are excluded.
+
+```bash
+php artisan teams:members:expiring                 # read-only table, window from config
+php artisan teams:members:expiring --days=3        # narrow the window
+php artisan teams:members:expiring --days=3 --notify  # fire MembershipExpiringSoon per member
+```
+
+Reuse the action from your own scheduled job — no Artisan needed:
+
+```php
+use RoundlyConsulting\Teams\Actions\DispatchExpiringMembershipsAction;
+
+app(DispatchExpiringMembershipsAction::class)->execute(withinDays: 7, notify: true);
+
+// or query directly:
+Member::query()->expiringWithin(7)->get();
+```
+
+Listen for `MembershipExpiringSoon` to turn it into a notification (e.g. in the publishable
+`TeamEventSubscriber`).
 
 ### Roles and permissions
 

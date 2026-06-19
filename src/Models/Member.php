@@ -132,6 +132,20 @@ final class Member extends Model
         return $query->whereNotNull('expires_at')->where('expires_at', '<=', now());
     }
 
+    /**
+     * Active memberships lapsing within the next $days — excludes already-expired
+     * (the prune path's concern) and never-expiring rows.
+     *
+     * @param  Builder<Member>  $query
+     * @return Builder<Member>
+     */
+    public function scopeExpiringWithin(Builder $query, int $days): Builder
+    {
+        return $query->active()
+            ->whereNotNull('expires_at')
+            ->whereBetween('expires_at', [now(), now()->addDays($days)]);
+    }
+
     public function removeFromTeam(): void
     {
         if ($this->delete()) {

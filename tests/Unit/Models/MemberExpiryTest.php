@@ -60,3 +60,28 @@ it('exposes a prunable query targeting long-expired members', function (): void 
 
     expect((new Member)->prunable()->count())->toBe(1);
 });
+
+it('scopes memberships expiring within the window, excluding edges and excluded rows', function (): void {
+    $team = Team::factory()->create();
+
+    $within = Member::factory()->for($team)->expiringAt(now()->addDays(3))->create();
+    Member::factory()->for($team)->expiringAt(now()->addDays(10))->create();   // beyond window
+    Member::factory()->for($team)->expired()->create();                        // already expired
+    Member::factory()->for($team)->create(['expires_at' => null]);             // never expires
+
+    $ids = Member::query()->expiringWithin(7)->pluck('id')->all();
+
+    expect($ids)->toBe([$within->getKey()]);
+});
+
+it('includes memberships expiring exactly at the window boundaries', function (): void {
+    $team = Team::factory()->create();
+
+    $atUpper = Member::factory()->for($team)->expiringAt(now()->addDays(7))->create();
+    $justInside = Member::factory()->for($team)->expiringAt(now()->addSeconds(5))->create();
+    Member::factory()->for($team)->expiringAt(now()->addDays(7)->addMinute())->create(); // just outside
+
+    $ids = Member::query()->expiringWithin(7)->pluck('id')->sort()->values()->all();
+
+    expect($ids)->toBe(collect([$atUpper, $justInside])->map->getKey()->sort()->values()->all());
+});

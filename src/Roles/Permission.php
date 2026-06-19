@@ -9,5 +9,6 @@ final readonly class Permission
     public function __construct(
         public string $key,
         public string $name = '',
+        public string $group = '',
     ) {}
 }

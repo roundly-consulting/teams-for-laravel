@@ -4,6 +4,7 @@ build
 coverage
 docs
 phpunit.xml
+storage
 testbench.yaml
 vendor
 node_modules

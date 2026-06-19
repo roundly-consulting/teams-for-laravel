@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use RoundlyConsulting\Teams\Facades\Teams;
+use RoundlyConsulting\Teams\Models\Invite;
+
+class AcceptInviteController extends Controller
+{
+    /**
+     * Accept an invite resolved via route-model binding on its code.
+     */
+    public function __invoke(Request $request, Invite $invite): RedirectResponse
+    {
+        $user = $request->user();
+
+        Teams::acceptInvite($invite, new \RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData(
+            member: $user,
+            email: $user->email,
+        ));
+
+        return redirect()->route('teams.show', $invite->team);
+    }
+}

@@ -16,5 +16,6 @@ final readonly class CreateInviteData
         public ?string $email = null,
         public ?Model $invitedBy = null,
         public array $meta = [],
+        public ?int $maxUses = 1,
     ) {}
 }

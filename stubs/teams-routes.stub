@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Controllers\AcceptInviteController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Team Invite Routes
+|--------------------------------------------------------------------------
+|
+| Wire these into your application by requiring this file from your routes
+| (e.g. in routes/web.php). The {invite} parameter binds on the invite code
+| because Invite::getRouteKeyName() returns "code".
+|
+*/
+
+Route::middleware(['web', 'auth'])->group(function (): void {
+    Route::match(['get', 'post'], 'teams/invites/{invite}', AcceptInviteController::class)
+        ->name('teams.invites.accept');
+});

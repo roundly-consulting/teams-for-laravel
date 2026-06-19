@@ -8,6 +8,7 @@ use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Events\InviteAccepted;
 use RoundlyConsulting\Teams\Exceptions\InviteEmailMismatchException;
+use RoundlyConsulting\Teams\Exceptions\InviteExhaustedException;
 use RoundlyConsulting\Teams\Exceptions\InviteExpiredException;
 use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\Member;
@@ -25,6 +26,10 @@ final class AcceptInviteAction
             throw InviteExpiredException::for($invite);
         }
 
+        if ($invite->isExhausted()) {
+            throw InviteExhaustedException::for($invite);
+        }
+
         if ($invite->email !== null && $invite->email !== $data->email) {
             throw InviteEmailMismatchException::for($invite);
         }
@@ -37,7 +42,11 @@ final class AcceptInviteAction
             role: $invite->role,
         ));
 
-        $invite->delete();
+        $invite->increment('uses');
+
+        if ($invite->isExhausted()) {
+            $invite->delete();
+        }
 
         InviteAccepted::dispatch($invite, $member);
 

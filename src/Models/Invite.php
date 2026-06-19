@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Actions\AcceptInviteAction;
+use RoundlyConsulting\Teams\Actions\ResendInviteAction;
 use RoundlyConsulting\Teams\Actions\RevokeInviteAction;
 use RoundlyConsulting\Teams\Database\Factories\InviteFactory;
 use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
@@ -27,6 +28,8 @@ use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
  * @property string|null $invited_by_type
  * @property int|null $invited_by_id
  * @property Collection<string, mixed> $meta
+ * @property int $uses
+ * @property int|null $max_uses
  * @property CarbonInterface $expires_at
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
@@ -52,6 +55,8 @@ final class Invite extends Model
         return [
             'expires_at' => 'datetime',
             'meta' => 'collection',
+            'uses' => 'integer',
+            'max_uses' => 'integer',
         ];
     }
 
@@ -103,12 +108,22 @@ final class Invite extends Model
         return $this->expires_at->isPast();
     }
 
+    public function isExhausted(): bool
+    {
+        return $this->max_uses !== null && $this->uses >= $this->max_uses;
+    }
+
     public function acceptBy(Model $member, ?string $email = null): Member
     {
         return app(AcceptInviteAction::class)->execute($this, new AcceptInviteData(
             member: $member,
             email: $email,
         ));
+    }
+
+    public function resend(): self
+    {
+        return app(ResendInviteAction::class)->execute($this);
     }
 
     public function revoke(): bool

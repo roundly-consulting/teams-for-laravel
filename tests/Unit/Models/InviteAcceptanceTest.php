@@ -25,3 +25,9 @@ it('accepts an email-targeted invite via the model when the email matches', func
 
     expect($member->role)->toBe('admin');
 });
+
+it('reports exhaustion based on uses and max_uses', function () {
+    expect((new Invite(['uses' => 0, 'max_uses' => 1]))->isExhausted())->toBeFalse()
+        ->and((new Invite(['uses' => 1, 'max_uses' => 1]))->isExhausted())->toBeTrue()
+        ->and((new Invite(['uses' => 5, 'max_uses' => null]))->isExhausted())->toBeFalse();
+});

@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('email')->nullable()->index();
             $table->nullableMorphs('invited_by');
             $table->json('meta')->nullable();
+            $table->unsignedInteger('uses')->default(0);
+            $table->unsignedInteger('max_uses')->nullable();
             $table->timestamp('expires_at');
             $table->timestamps();
             $table->softDeletes();

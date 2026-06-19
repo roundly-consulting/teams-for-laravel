@@ -27,6 +27,8 @@ final class CreateInviteAction
             'role' => $data->role,
             'email' => $data->email,
             'expires_at' => $expiresAt,
+            'uses' => 0,
+            'max_uses' => $data->maxUses,
         ];
 
         if ($data->invitedBy !== null) {

@@ -22,6 +22,8 @@ final class InviteFactory extends Factory
             'code' => Str::random(32),
             'role' => 'user',
             'meta' => [],
+            'uses' => 0,
+            'max_uses' => 1,
             'expires_at' => now()->addWeek(),
         ];
     }
@@ -37,6 +39,13 @@ final class InviteFactory extends Factory
     {
         return $this->state(fn (): array => [
             'email' => $email,
+        ]);
+    }
+
+    public function maxUses(?int $maxUses): self
+    {
+        return $this->state(fn (): array => [
+            'max_uses' => $maxUses,
         ]);
     }
 }

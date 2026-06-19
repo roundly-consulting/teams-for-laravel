@@ -18,6 +18,8 @@ it('has correct casts', function () {
         'id' => 'int',
         'expires_at' => 'datetime',
         'meta' => 'collection',
+        'uses' => 'integer',
+        'max_uses' => 'integer',
         'deleted_at' => 'datetime',
     ]);
 });

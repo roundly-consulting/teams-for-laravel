@@ -62,7 +62,10 @@
         "laravel": {
             "providers": [
                 "RoundlyConsulting\\Teams\\TeamsServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "Teams": "RoundlyConsulting\\Teams\\Facades\\Teams"
+            }
         }
     },
     "minimum-stability": "dev",

@@ -1,0 +1,70 @@
+{
+    "name": "roundly-consulting/teams-for-laravel",
+    "description": "Associate users with teams, roles, permissions, and invitations in Laravel.",
+    "keywords": [
+        "Roundly Consulting",
+        "laravel",
+        "teams",
+        "roles",
+        "permissions",
+        "invitations"
+    ],
+    "homepage": "https://github.com/roundly-consulting/teams-for-laravel",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andrej Mihaliak",
+            "email": "andrej@mihaliak.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^12.0|^13.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "nunomaduro/collision": "^8.0",
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-arch": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "phpstan/extension-installer": "^1.3",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "RoundlyConsulting\\Teams\\": "src/",
+            "RoundlyConsulting\\Teams\\Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RoundlyConsulting\\Teams\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse --no-progress",
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage --min=90"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "RoundlyConsulting\\Teams\\TeamsServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

@@ -15,10 +15,15 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Actions\AddMemberAction;
 use RoundlyConsulting\Teams\Actions\CreateInviteAction;
+use RoundlyConsulting\Teams\Actions\DefineTeamRoleAction;
 use RoundlyConsulting\Teams\Actions\RemoveMemberAction;
 use RoundlyConsulting\Teams\Database\Factories\TeamFactory;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateInviteData;
+use RoundlyConsulting\Teams\DataTransferObjects\DefineTeamRoleData;
+use RoundlyConsulting\Teams\Roles\Permission;
+use RoundlyConsulting\Teams\Roles\Role;
+use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
 
 /**
  * @property int $id
@@ -76,6 +81,24 @@ final class Team extends Model
         return $this->hasMany($model);
     }
 
+    /** @return HasMany<TeamRole, $this> */
+    public function teamRoles(): HasMany
+    {
+        /** @var class-string<TeamRole> $model */
+        $model = config('teams.models.team_role', TeamRole::class);
+
+        return $this->hasMany($model);
+    }
+
+    /** @return HasMany<JoinRequest, $this> */
+    public function joinRequests(): HasMany
+    {
+        /** @var class-string<JoinRequest> $model */
+        $model = config('teams.models.join_request', JoinRequest::class);
+
+        return $this->hasMany($model);
+    }
+
     /** @return MorphTo<Model, $this> */
     public function owner(): MorphTo
     {
@@ -125,13 +148,42 @@ final class Team extends Model
 
     public function memberHasPermission(Model $member, string $permission): bool
     {
-        $role = $this->findMember($member)?->role();
+        $found = $this->findMember($member);
+
+        if ($found === null || $found->isExpired()) {
+            return false;
+        }
+
+        $role = $found->role();
 
         if ($role === null) {
             return false;
         }
 
         return $role->hasPermission($permission);
+    }
+
+    /**
+     * The effective role map for this team: global roles merged with this
+     * team's per-team overrides (overrides win on key).
+     *
+     * @return array<string, Role>
+     */
+    public function roles(): array
+    {
+        return app(TeamRoleResolver::class)->all($this);
+    }
+
+    /** @param list<string|Permission> $permissions */
+    public function defineRole(string $key, string $name, array $permissions = [], string $description = ''): TeamRole
+    {
+        return app(DefineTeamRoleAction::class)->execute(new DefineTeamRoleData(
+            teamId: (int) $this->getKey(),
+            key: $key,
+            name: $name,
+            permissions: $permissions,
+            description: $description,
+        ));
     }
 
     public function findMember(Model $member): ?Member
@@ -145,22 +197,24 @@ final class Team extends Model
     }
 
     /** @param array<string, mixed> $meta */
-    public function invite(Carbon $expiresAt, string $role, array $meta = []): Invite
+    public function invite(Carbon $expiresAt, string $role, array $meta = [], ?int $maxUses = 1): Invite
     {
         return app(CreateInviteAction::class)->execute($this, new CreateInviteData(
             role: $role,
             expiresAt: $expiresAt,
             meta: $meta,
+            maxUses: $maxUses,
         ));
     }
 
     /** @param array<string, mixed> $meta */
-    public function addMember(Model $member, string $role, array $meta = []): Member
+    public function addMember(Model $member, string $role, array $meta = [], ?CarbonInterface $expiresAt = null): Member
     {
         return app(AddMemberAction::class)->execute($this, new AddMemberData(
             member: $member,
             role: $role,
             meta: $meta,
+            expiresAt: $expiresAt,
         ));
     }
 

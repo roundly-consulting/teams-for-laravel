@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use RoundlyConsulting\Teams\Models\Invite;
+use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Models\TeamRole;
 
 return [
 
@@ -22,6 +24,8 @@ return [
         'team' => Team::class,
         'member' => Member::class,
         'invite' => Invite::class,
+        'team_role' => TeamRole::class,
+        'join_request' => JoinRequest::class,
     ],
 
     /*
@@ -33,6 +37,16 @@ return [
     | controlled) or stored in the database (the "database" driver, manageable
     | at runtime). The "owner" key is granted to a team's creator/owner, and
     | "admin" is the role a previous owner is demoted to on ownership transfer.
+    | "default" is the role applied to new members when none is supplied (e.g.
+    | when a join request is approved).
+    |
+    | "per_team" enables per-team role overrides: when on, a team can define its
+    | own permission set for a role key that wins over the global definition.
+    | When off (the default) roles resolve to the global provider with no extra
+    | queries, preserving the original behaviour exactly.
+    |
+    | "cache" wraps the "database" provider in a cache layer that is flushed on
+    | every role mutation. It is off by default.
     |
     */
 
@@ -40,6 +54,14 @@ return [
         'provider' => env('TEAMS_ROLES_PROVIDER', 'array'),
         'owner' => 'owner',
         'admin' => 'admin',
+        'default' => env('TEAMS_DEFAULT_ROLE', 'member'),
+        'per_team' => (bool) env('TEAMS_PER_TEAM_ROLES', false),
+        'cache' => [
+            'enabled' => (bool) env('TEAMS_ROLES_CACHE', false),
+            'store' => env('TEAMS_ROLES_CACHE_STORE'),
+            'key' => env('TEAMS_ROLES_CACHE_KEY', 'teams.roles'),
+            'ttl' => (int) env('TEAMS_ROLES_CACHE_TTL', 3600),
+        ],
     ],
 
     /*
@@ -49,7 +71,9 @@ return [
     |
     | "expires_after" is a relative interval used as the default invite expiry
     | when none is supplied, and "code_length" is the length of the generated
-    | random invite code.
+    | random invite code. Invites default to a single use (max_uses = 1) so an
+    | accepted invite is consumed and deleted; pass a higher "maxUses" to issue
+    | multi-seat links, or null for unlimited.
     |
     */
 
@@ -60,19 +84,49 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Members
+    |--------------------------------------------------------------------------
+    |
+    | "prune_after" is the relative interval, measured from a membership's
+    | expiry, after which "teams:members:prune" force-deletes the audit row.
+    |
+    */
+
+    'members' => [
+        'prune_after' => env('TEAMS_MEMBERS_PRUNE_AFTER', '30 days'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gate & permissions
     |--------------------------------------------------------------------------
     |
     | When "gate.register" is true the package registers Laravel Gate abilities
     | and Blade directives so you can authorize with $user->can('teams.<perm>',
     | $team) and @teamPermission / @teamRole. "prefix" is the ability name
-    | prefix used for those gate abilities.
+    | prefix used for those gate abilities. "owner_ability" is the short name
+    | that resolves to team ownership: $user->can('teams.owner', $team).
     |
     */
 
     'gate' => [
         'register' => (bool) env('TEAMS_REGISTER_GATE', true),
         'prefix' => env('TEAMS_GATE_PREFIX', 'teams'),
+        'owner_ability' => env('TEAMS_GATE_OWNER_ABILITY', 'owner'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    |
+    | Optional queue connection consumed by the publishable team event
+    | subscriber stub when turning team events into notifications.
+    |
+    */
+
+    'notifications' => [
+        'queue_connection' => env('TEAMS_NOTIFY_CONNECTION'),
     ],
 
 ];

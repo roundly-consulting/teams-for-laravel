@@ -13,6 +13,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use RoundlyConsulting\Addresses\Traits\HasAddresses;
+use RoundlyConsulting\Connections\Concerns\HasConnections;
+use RoundlyConsulting\Connections\Contracts\Connectable;
+use RoundlyConsulting\Contacts\Concerns\HasContacts;
+use RoundlyConsulting\Options\Traits\HasOptions;
 use RoundlyConsulting\Teams\Actions\AddMemberAction;
 use RoundlyConsulting\Teams\Actions\CreateInviteAction;
 use RoundlyConsulting\Teams\Actions\DefineTeamRoleAction;
@@ -36,11 +41,21 @@ use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
  */
-final class Team extends Model
+final class Team extends Model implements Connectable
 {
+    // Both concerns ship an addAddress(): the structured addresses-package one
+    // wins; the contacts free-text variant is kept under a distinct name.
+    use HasAddresses, HasContacts {
+        HasAddresses::addAddress insteadof HasContacts;
+        HasContacts::addAddress as addContactAddress;
+    }
+
+    use HasConnections;
+
     /** @use HasFactory<TeamFactory> */
     use HasFactory;
 
+    use HasOptions;
     use SoftDeletes;
 
     /** @var string */

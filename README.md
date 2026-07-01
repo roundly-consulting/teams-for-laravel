@@ -642,6 +642,113 @@ Event::listen(function (InviteAccepted $event): void {
 });
 ```
 
+## Integrates with
+
+Teams builds directly on other roundly-consulting packages. They are hard dependencies, so
+their seams are always available on the bundled (config-swappable) `Team` model.
+
+| Provider | What it adds to a team |
+|---|---|
+| [`enums-for-laravel`](https://github.com/roundly-consulting/enums-for-laravel) | `JoinRequestStatus` gains `labels()`/`options()`/`validationRule()`/`values()` + case lookups. |
+| [`options-for-laravel`](https://github.com/roundly-consulting/options-for-laravel) | Typed per-team governance settings (join policy, seat cap, default role, require-approval). |
+| [`contacts-for-laravel`](https://github.com/roundly-consulting/contacts-for-laravel) | Team support/billing emails, phones and URLs with a primary per type. |
+| [`addresses-for-laravel`](https://github.com/roundly-consulting/addresses-for-laravel) | Team billing/physical/mailing address book with typed lookups. |
+| [`approvals-for-laravel`](https://github.com/roundly-consulting/approvals-for-laravel) | Opt-in multi-admin sign-off on join requests, mirrored back to the join request. |
+| [`connections-for-laravel`](https://github.com/roundly-consulting/connections-for-laravel) | Team-to-team and team-to-user affiliations with permissions and expiry. |
+
+### Enum helpers on `JoinRequestStatus`
+
+```php
+use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
+
+JoinRequestStatus::options();          // [{value,label,name}, …] for selects
+JoinRequestStatus::labels();           // ['Pending','Approved','Denied']
+JoinRequestStatus::validationRule();   // 'in:pending,approved,denied'
+JoinRequestStatus::tryFromLabel('Approved');
+```
+
+### Team settings (options)
+
+Each team carries a small set of first-class, typed option classes. Unset options fall back to
+their defaults, so a team that never touches its settings behaves exactly as before.
+
+```php
+Teams::for($team)->settings()
+    ->setJoinPolicy(JoinPolicy::Open)      // Open | Request (default) | InviteOnly
+    ->setMaxSeats(50)                       // null = unlimited (default)
+    ->setDefaultMemberRole('member')        // overrides teams.roles.default per team
+    ->setRequireApprovalToJoin(true);       // hold Open-team requests pending
+
+$settings = Teams::for($team)->settings();
+$settings->joinPolicy();               // JoinPolicy enum
+$settings->maxSeats();                 // ?int
+```
+
+These feed the join/seat behaviour directly:
+
+- **`JoinPolicy::InviteOnly`** — `Teams::requestToJoin()` throws `TeamsException`.
+- **`JoinPolicy::Open`** — a request is auto-approved (member added) unless
+  `requireApprovalToJoin` is on, in which case it stays pending.
+- **`JoinPolicy::Request`** (default) — a pending request awaiting a decision (unchanged).
+- **`MaxSeats`** — `addMember` throws `TeamsException` once the active membership hits the cap.
+- **`DefaultMemberRole`** — the fallback role when approving a request with none supplied.
+
+Read/write a single option directly too: `$team->option(MaxSeats::class)->set(50)`.
+
+### Team contacts & addresses
+
+```php
+$team->addEmail('support@acme.io', 'support', primary: true);
+$team->addPhone('+441234567890', 'ops');
+$team->primaryEmail();                                   // Contact|null
+Teams::for($team)->addContactEmail('billing@acme.io', 'billing', primary: true);
+
+$team->createAddress(
+    city: 'London', street: '1 King St', postalCode: 'EC1A 1AA',
+    countryIsoCode: 'GB', type: AddressType::Billing, isPrimary: true,
+);
+$team->getPrimaryAddressOfType(AddressType::Billing);
+Teams::for($team)->addAddress(city: 'Berlin', street: '…', postalCode: '…', countryIsoCode: 'DE');
+```
+
+### Governed join-request sign-off (approvals)
+
+Opt in per request. Enable `teams.approvals.enabled`, then route the request through the
+approvals engine instead of a single responder. The native
+`approveJoinRequest`/`denyJoinRequest` path is untouched.
+
+```php
+// config('teams.approvals.enabled') = true
+$request = Teams::for($team)
+    ->requireApprovalFrom([$admin1, $admin2])
+    ->rule(ApprovalRule::Quorum)
+    ->quorum(2)
+    ->requestToJoinFor($user);   // opens pending; an ApprovalRequest is created
+
+// Admins sign off through the approvals engine:
+Approvals::for($request)->as($admin1)->approve();
+Approvals::for($request)->as($admin2)->approve();  // quorum reached
+```
+
+When the engine resolves, `SyncJoinRequestStatusFromApproval` mirrors the outcome onto the
+join request: **approved** runs the add-member path and fires `JoinRequestApproved`;
+**rejected** marks it `Denied` and fires `JoinRequestDenied`; **cancelled/expired** are no-ops.
+The listener is idempotent and only acts while `teams.approvals.enabled` is on.
+
+### Team affiliations (connections)
+
+```php
+$team->connectTo($partnerTeam, ['share:roster']);       // team ↔ team
+$team->connectTo($user, ['delegate:admin']);            // team ↔ user
+$team->inviteConnection($partnerTeam);                  // pending invitation
+$partnerTeam->acceptConnectionFrom($team);
+
+$team->isConnectedTo($partnerTeam);
+$team->connectablesOfType(Team::class);                 // partner teams
+$team->hasPermissionThroughConnection($partnerTeam, 'share:roster');
+Teams::for($team)->connectTo($partnerTeam, ['share:roster']);
+```
+
 ## Testing
 
 ```bash

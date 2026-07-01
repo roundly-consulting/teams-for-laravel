@@ -7,6 +7,7 @@ use RoundlyConsulting\Teams\Tests\TestCase;
 
 uses(TestCase::class)->in(
     __DIR__.'/Unit',
+    __DIR__.'/Cross',
     __DIR__.'/Traits',
     __DIR__.'/Feature/Commands',
     __DIR__.'/Feature/BladeDirectivesTest.php',

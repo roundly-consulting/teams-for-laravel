@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Actions;
 
 use Illuminate\Support\Collection;
+use RoundlyConsulting\Options\Facades\Options;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Events\TeamMemberAdded;
 use RoundlyConsulting\Teams\Events\TeamMemberRoleChanged;
+use RoundlyConsulting\Teams\Exceptions\TeamsException;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Options\MaxSeats;
 
 final class AddMemberAction
 {
@@ -45,6 +48,8 @@ final class AddMemberAction
             return $existing;
         }
 
+        $this->guardSeatLimit($team);
+
         /** @var Member $created */
         $created = $team->members()->create([
             'member_type' => $data->member->getMorphClass(),
@@ -58,5 +63,23 @@ final class AddMemberAction
         TeamMemberAdded::dispatch($created);
 
         return $created;
+    }
+
+    /**
+     * Enforce the team's MaxSeats option when one is set. Only new seats are
+     * checked; an idempotent re-add of an existing member never trips the cap.
+     */
+    private function guardSeatLimit(Team $team): void
+    {
+        /** @var int|null $maxSeats */
+        $maxSeats = Options::get(MaxSeats::class, $team);
+
+        if ($maxSeats === null) {
+            return;
+        }
+
+        if ($team->members()->active()->count() >= $maxSeats) {
+            throw TeamsException::maxSeatsReached($maxSeats);
+        }
     }
 }

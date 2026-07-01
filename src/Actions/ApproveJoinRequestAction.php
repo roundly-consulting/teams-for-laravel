@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Actions;
 
 use Illuminate\Database\Eloquent\Model;
+use RoundlyConsulting\Options\Facades\Options;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\RespondToJoinRequestData;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
@@ -12,6 +13,7 @@ use RoundlyConsulting\Teams\Events\JoinRequestApproved;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Options\DefaultMemberRole;
 
 final class ApproveJoinRequestAction
 {
@@ -32,10 +34,13 @@ final class ApproveJoinRequestAction
         /** @var Model $requester */
         $requester = $request->requester;
 
-        /** @var string $defaultRole */
-        $defaultRole = config('teams.roles.default', 'member');
+        /** @var string $configDefault */
+        $configDefault = config('teams.roles.default', 'member');
 
-        $role = $data->role ?? $request->requested_role ?? $defaultRole;
+        /** @var string|null $teamDefault */
+        $teamDefault = Options::get(DefaultMemberRole::class, $team);
+
+        $role = $data->role ?? $request->requested_role ?? $teamDefault ?? $configDefault;
 
         if (! $request->isPending()) {
             return $this->addMember->execute($team, new AddMemberData(

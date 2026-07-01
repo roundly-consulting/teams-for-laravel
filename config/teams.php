@@ -119,6 +119,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Approvals
+    |--------------------------------------------------------------------------
+    |
+    | Opt-in multi-admin sign-off on join requests, routed through
+    | approvals-for-laravel. When "enabled" is on, opening a request through
+    | Teams::for($team)->requireApprovalFrom([...])->requestToJoinFor($user)
+    | creates an ApprovalRequest and leaves the join request pending until the
+    | engine resolves it; the SyncJoinRequestStatusFromApproval listener then
+    | mirrors the outcome onto the join request (adding the member on approval,
+    | denying on rejection). When off, that builder path falls back to the
+    | native single-responder approveJoinRequest/denyJoinRequest flow.
+    |
+    | "rule" and "quorum" are the defaults used when the builder does not set
+    | them explicitly; "rule" is an ApprovalRule value (unanimous/quorum/any/
+    | weighted).
+    |
+    */
+
+    'approvals' => [
+        'enabled' => (bool) env('TEAMS_APPROVALS', false),
+        'rule' => env('TEAMS_APPROVALS_RULE', 'unanimous'),
+        'quorum' => env('TEAMS_APPROVALS_QUORUM') !== null ? (int) env('TEAMS_APPROVALS_QUORUM') : null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gate & permissions
     |--------------------------------------------------------------------------
     |

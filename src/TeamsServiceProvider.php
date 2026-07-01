@@ -6,9 +6,11 @@ namespace RoundlyConsulting\Teams;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
 use RoundlyConsulting\Teams\Commands\MakePolicyCommand;
@@ -17,6 +19,7 @@ use RoundlyConsulting\Teams\Commands\PruneInvitesCommand;
 use RoundlyConsulting\Teams\Commands\PruneJoinRequestsCommand;
 use RoundlyConsulting\Teams\Commands\PruneMembersCommand;
 use RoundlyConsulting\Teams\Commands\ResendInviteCommand;
+use RoundlyConsulting\Teams\Listeners\SyncJoinRequestStatusFromApproval;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Roles\CachedRoleProvider;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
@@ -55,6 +58,8 @@ final class TeamsServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'teams');
 
         $this->registerGate();
+
+        Event::listen(ApprovalRequestResolved::class, SyncJoinRequestStatusFromApproval::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

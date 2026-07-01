@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use RoundlyConsulting\Approvals\Interfaces\RequiresApprovalInterface;
+use RoundlyConsulting\Approvals\Traits\RequiresApproval;
 use RoundlyConsulting\Teams\Database\Factories\JoinRequestFactory;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 
@@ -33,12 +35,13 @@ use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
  */
-final class JoinRequest extends Model
+final class JoinRequest extends Model implements RequiresApprovalInterface
 {
     /** @use HasFactory<JoinRequestFactory> */
     use HasFactory;
 
     use Prunable;
+    use RequiresApproval;
     use SoftDeletes;
 
     /** @var string */

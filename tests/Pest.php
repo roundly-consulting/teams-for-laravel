@@ -12,6 +12,7 @@ uses(TestCase::class)->in(
     __DIR__.'/Feature/Commands',
     __DIR__.'/Feature/BladeDirectivesTest.php',
     __DIR__.'/Feature/GateIntegrationTest.php',
+    __DIR__.'/Feature/ConfiguredModelsTest.php',
     __DIR__.'/Feature/MigrationOrderTest.php',
     __DIR__.'/Feature/RoleProviderSwitchTest.php',
     __DIR__.'/Feature/TeamsFacadeTest.php',

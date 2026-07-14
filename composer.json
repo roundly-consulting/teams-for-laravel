@@ -19,14 +19,15 @@
         }
     ],
     "require": {
-        "php": "^8.4",
         "illuminate/contracts": "^12.0|^13.0",
+        "php": "^8.4",
         "roundly-consulting/addresses-for-laravel": "@dev",
         "roundly-consulting/approvals-for-laravel": "@dev",
         "roundly-consulting/connections-for-laravel": "@dev",
         "roundly-consulting/contacts-for-laravel": "@dev",
         "roundly-consulting/enums-for-laravel": "@dev",
-        "roundly-consulting/options-for-laravel": "@dev"
+        "roundly-consulting/options-for-laravel": "@dev",
+        "roundly-consulting/package-toolkit-for-laravel": "@dev"
     },
     "repositories": [
         {

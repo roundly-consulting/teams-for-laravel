@@ -84,28 +84,35 @@ class Team extends Model implements Connectable
         return TeamFactory::new();
     }
 
-    /** @return HasMany<Member, $this> */
+    /**
+     * Every relation below names `team_id` explicitly. Eloquent derives an unnamed
+     * foreign key from the PARENT'S CLASS NAME, so a host that swaps
+     * `teams.models.team` for its own subclass — which the config invites — would
+     * otherwise get `custom_team_id`, a column no table has.
+     *
+     * @return HasMany<Member, $this>
+     */
     public function members(): HasMany
     {
-        return $this->hasMany(MemberModel::class());
+        return $this->hasMany(MemberModel::class(), 'team_id');
     }
 
     /** @return HasMany<Invite, $this> */
     public function invites(): HasMany
     {
-        return $this->hasMany(InviteModel::class());
+        return $this->hasMany(InviteModel::class(), 'team_id');
     }
 
     /** @return HasMany<TeamRole, $this> */
     public function teamRoles(): HasMany
     {
-        return $this->hasMany(TeamRoleModel::class());
+        return $this->hasMany(TeamRoleModel::class(), 'team_id');
     }
 
     /** @return HasMany<JoinRequest, $this> */
     public function joinRequests(): HasMany
     {
-        return $this->hasMany(JoinRequestModel::class());
+        return $this->hasMany(JoinRequestModel::class(), 'team_id');
     }
 
     /** @return MorphTo<Model, $this> */

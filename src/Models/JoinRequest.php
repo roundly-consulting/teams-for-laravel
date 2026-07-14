@@ -17,6 +17,7 @@ use RoundlyConsulting\Approvals\Interfaces\RequiresApprovalInterface;
 use RoundlyConsulting\Approvals\Traits\RequiresApproval;
 use RoundlyConsulting\Teams\Database\Factories\JoinRequestFactory;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
+use RoundlyConsulting\Teams\Support\TeamModel;
 
 /**
  * @property int $id
@@ -34,8 +35,11 @@ use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
+ *
+ * Deliberately not final: `teams.models.join_request` documents pointing the package
+ * at your own subclass, which final would forbid.
  */
-final class JoinRequest extends Model implements RequiresApprovalInterface
+class JoinRequest extends Model implements RequiresApprovalInterface
 {
     /** @use HasFactory<JoinRequestFactory> */
     use HasFactory;
@@ -69,10 +73,7 @@ final class JoinRequest extends Model implements RequiresApprovalInterface
     /** @return BelongsTo<Team, $this> */
     public function team(): BelongsTo
     {
-        /** @var class-string<Team> $model */
-        $model = config('teams.models.team', Team::class);
-
-        return $this->belongsTo($model);
+        return $this->belongsTo(TeamModel::class());
     }
 
     /** @return MorphTo<Model, $this> */

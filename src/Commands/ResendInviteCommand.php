@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Commands;
 use Illuminate\Console\Command;
 use RoundlyConsulting\Teams\Actions\ResendInviteAction;
 use RoundlyConsulting\Teams\Models\Invite;
+use RoundlyConsulting\Teams\Support\InviteModel;
 
 final class ResendInviteCommand extends Command
 {
@@ -21,11 +22,8 @@ final class ResendInviteCommand extends Command
         /** @var string $code */
         $code = $this->argument('code');
 
-        /** @var class-string<Invite> $model */
-        $model = config('teams.models.invite', Invite::class);
-
         /** @var Invite|null $invite */
-        $invite = $model::query()->where('code', $code)->first();
+        $invite = InviteModel::query()->where('code', $code)->first();
 
         if ($invite === null) {
             $this->error("No invite found for code \"{$code}\".");

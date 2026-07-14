@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Actions;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Events\JoinRequestExpired;
 use RoundlyConsulting\Teams\Models\JoinRequest;
+use RoundlyConsulting\Teams\Support\JoinRequestModel;
 
 final class ExpireJoinRequestsAction
 {
@@ -17,12 +18,9 @@ final class ExpireJoinRequestsAction
      */
     public function execute(): int
     {
-        /** @var class-string<JoinRequest> $model */
-        $model = config('teams.models.join_request', JoinRequest::class);
-
         $count = 0;
 
-        $model::query()
+        JoinRequestModel::query()
             ->expiredPending()
             ->each(function (JoinRequest $request) use (&$count): void {
                 $request->update([

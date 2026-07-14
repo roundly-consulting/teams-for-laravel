@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Actions;
 
-use RoundlyConsulting\Teams\Models\Invite;
+use RoundlyConsulting\Teams\Support\InviteModel;
 
 final class PruneInvitesAction
 {
@@ -13,10 +13,7 @@ final class PruneInvitesAction
      */
     public function execute(): int
     {
-        /** @var class-string<Invite> $model */
-        $model = config('teams.models.invite', Invite::class);
-
-        return $model::query()
+        return InviteModel::query()
             ->where('expires_at', '<=', now()->subMonth())
             ->forceDelete();
     }

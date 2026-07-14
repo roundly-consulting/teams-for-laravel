@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Teams\Actions;
 
 use RoundlyConsulting\Teams\Events\MembershipExpired;
 use RoundlyConsulting\Teams\Models\Member;
+use RoundlyConsulting\Teams\Support\MemberModel;
 
 final class PruneExpiredMembersAction
 {
@@ -15,9 +16,6 @@ final class PruneExpiredMembersAction
      */
     public function execute(): int
     {
-        /** @var class-string<Member> $model */
-        $model = config('teams.models.member', Member::class);
-
         /** @var string $after */
         $after = config('teams.members.prune_after', '30 days');
 
@@ -25,7 +23,7 @@ final class PruneExpiredMembersAction
 
         $count = 0;
 
-        $model::query()
+        MemberModel::query()
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', $threshold)
             ->each(function (Member $member) use (&$count): void {

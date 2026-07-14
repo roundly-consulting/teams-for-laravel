@@ -22,6 +22,7 @@ use RoundlyConsulting\Teams\Roles\Permission;
 use RoundlyConsulting\Teams\Roles\Permissions;
 use RoundlyConsulting\Teams\Roles\Role;
 use RoundlyConsulting\Teams\Roles\Roles;
+use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Testing\TeamsFake;
 
 class Teams
@@ -48,11 +49,8 @@ class Teams
 
     public function acceptInviteByCode(string $code, Model $user, ?string $email = null): Member
     {
-        /** @var class-string<Invite> $model */
-        $model = config('teams.models.invite', Invite::class);
-
         /** @var Invite|null $invite */
-        $invite = $model::query()->where('code', $code)->first();
+        $invite = InviteModel::query()->where('code', $code)->first();
 
         if ($invite === null) {
             throw InviteNotFoundException::forCode($code);

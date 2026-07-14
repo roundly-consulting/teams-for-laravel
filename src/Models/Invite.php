@@ -19,6 +19,8 @@ use RoundlyConsulting\Teams\Actions\ResendInviteAction;
 use RoundlyConsulting\Teams\Actions\RevokeInviteAction;
 use RoundlyConsulting\Teams\Database\Factories\InviteFactory;
 use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
+use RoundlyConsulting\Teams\Support\MemberModel;
+use RoundlyConsulting\Teams\Support\TeamModel;
 
 /**
  * @property int $id
@@ -35,8 +37,11 @@ use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
+ *
+ * Deliberately not final: `teams.models.invite` documents pointing the package at
+ * your own subclass, which final would forbid.
  */
-final class Invite extends Model
+class Invite extends Model
 {
     /** @use HasFactory<InviteFactory> */
     use HasFactory;
@@ -74,10 +79,7 @@ final class Invite extends Model
     /** @return BelongsTo<Team, $this> */
     public function team(): BelongsTo
     {
-        /** @var class-string<Team> $model */
-        $model = config('teams.models.team', Team::class);
-
-        return $this->belongsTo($model);
+        return $this->belongsTo(TeamModel::class());
     }
 
     /** @return MorphTo<Model, $this> */
@@ -94,10 +96,7 @@ final class Invite extends Model
      */
     public function acceptedMembers(): HasMany
     {
-        /** @var class-string<Member> $model */
-        $model = config('teams.models.member', Member::class);
-
-        return $this->hasMany($model, 'accepted_invite_id');
+        return $this->hasMany(MemberModel::class(), 'accepted_invite_id');
     }
 
     /**

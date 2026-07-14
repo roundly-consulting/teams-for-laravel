@@ -12,7 +12,7 @@ use RoundlyConsulting\Teams\Actions\ApproveJoinRequestAction;
 use RoundlyConsulting\Teams\Actions\DenyJoinRequestAction;
 use RoundlyConsulting\Teams\DataTransferObjects\RespondToJoinRequestData;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
-use RoundlyConsulting\Teams\Models\JoinRequest;
+use RoundlyConsulting\Teams\Support\JoinRequestModel;
 
 /**
  * Mirrors a join request's approval-request resolution onto its own status, so a
@@ -41,8 +41,7 @@ final class SyncJoinRequestStatusFromApproval
         $request = $event->request;
         $subject = $request->subject;
 
-        /** @var class-string<JoinRequest> $model */
-        $model = config('teams.models.join_request', JoinRequest::class);
+        $model = JoinRequestModel::class();
 
         if (! $subject instanceof $model) {
             return;

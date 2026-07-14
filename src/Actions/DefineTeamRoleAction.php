@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Actions;
 use RoundlyConsulting\Teams\DataTransferObjects\DefineTeamRoleData;
 use RoundlyConsulting\Teams\Models\TeamRole;
 use RoundlyConsulting\Teams\Roles\Permission;
+use RoundlyConsulting\Teams\Support\TeamRoleModel;
 
 final class DefineTeamRoleAction
 {
@@ -15,11 +16,7 @@ final class DefineTeamRoleAction
      */
     public function execute(DefineTeamRoleData $data): TeamRole
     {
-        /** @var class-string<TeamRole> $model */
-        $model = config('teams.models.team_role', TeamRole::class);
-
-        /** @var TeamRole $role */
-        $role = $model::query()->updateOrCreate(
+        $role = TeamRoleModel::query()->updateOrCreate(
             ['team_id' => $data->teamId, 'key' => $data->key],
             [
                 'name' => $data->name,

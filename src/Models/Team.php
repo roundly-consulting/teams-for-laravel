@@ -29,6 +29,10 @@ use RoundlyConsulting\Teams\DataTransferObjects\DefineTeamRoleData;
 use RoundlyConsulting\Teams\Roles\Permission;
 use RoundlyConsulting\Teams\Roles\Role;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
+use RoundlyConsulting\Teams\Support\InviteModel;
+use RoundlyConsulting\Teams\Support\JoinRequestModel;
+use RoundlyConsulting\Teams\Support\MemberModel;
+use RoundlyConsulting\Teams\Support\TeamRoleModel;
 
 /**
  * @property int $id
@@ -40,8 +44,11 @@ use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
+ *
+ * Deliberately not final: `teams.models.team` documents pointing the package at
+ * your own subclass, which final would forbid.
  */
-final class Team extends Model implements Connectable
+class Team extends Model implements Connectable
 {
     // Both concerns ship an addAddress(): the structured addresses-package one
     // wins; the contacts free-text variant is kept under a distinct name.
@@ -49,7 +56,6 @@ final class Team extends Model implements Connectable
         HasAddresses::addAddress insteadof HasContacts;
         HasContacts::addAddress as addContactAddress;
     }
-
     use HasConnections;
 
     /** @use HasFactory<TeamFactory> */
@@ -81,37 +87,25 @@ final class Team extends Model implements Connectable
     /** @return HasMany<Member, $this> */
     public function members(): HasMany
     {
-        /** @var class-string<Member> $model */
-        $model = config('teams.models.member', Member::class);
-
-        return $this->hasMany($model);
+        return $this->hasMany(MemberModel::class());
     }
 
     /** @return HasMany<Invite, $this> */
     public function invites(): HasMany
     {
-        /** @var class-string<Invite> $model */
-        $model = config('teams.models.invite', Invite::class);
-
-        return $this->hasMany($model);
+        return $this->hasMany(InviteModel::class());
     }
 
     /** @return HasMany<TeamRole, $this> */
     public function teamRoles(): HasMany
     {
-        /** @var class-string<TeamRole> $model */
-        $model = config('teams.models.team_role', TeamRole::class);
-
-        return $this->hasMany($model);
+        return $this->hasMany(TeamRoleModel::class());
     }
 
     /** @return HasMany<JoinRequest, $this> */
     public function joinRequests(): HasMany
     {
-        /** @var class-string<JoinRequest> $model */
-        $model = config('teams.models.join_request', JoinRequest::class);
-
-        return $this->hasMany($model);
+        return $this->hasMany(JoinRequestModel::class());
     }
 
     /** @return MorphTo<Model, $this> */

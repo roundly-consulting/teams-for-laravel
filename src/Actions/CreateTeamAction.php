@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Support\TeamModel;
 
 final class CreateTeamAction
 {
@@ -17,9 +18,6 @@ final class CreateTeamAction
 
     public function execute(CreateTeamData $data): Team
     {
-        /** @var class-string<Team> $model */
-        $model = config('teams.models.team', Team::class);
-
         $attributes = [
             'name' => $data->name,
             'is_public' => $data->isPublic,
@@ -31,8 +29,7 @@ final class CreateTeamAction
             $attributes['owner_id'] = $data->owner->getKey();
         }
 
-        /** @var Team $team */
-        $team = $model::query()->create($attributes);
+        $team = TeamModel::query()->create($attributes);
 
         if ($data->owner !== null) {
             /** @var string $ownerRole */

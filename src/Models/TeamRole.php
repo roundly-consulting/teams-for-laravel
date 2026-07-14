@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Database\Factories\TeamRoleFactory;
 use RoundlyConsulting\Teams\Roles\Role;
+use RoundlyConsulting\Teams\Support\TeamModel;
 
 /**
  * @property int $id
@@ -23,8 +24,11 @@ use RoundlyConsulting\Teams\Roles\Role;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
+ *
+ * Deliberately not final: `teams.models.team_role` documents pointing the package at
+ * your own subclass, which final would forbid.
  */
-final class TeamRole extends Model
+class TeamRole extends Model
 {
     /** @use HasFactory<TeamRoleFactory> */
     use HasFactory;
@@ -53,10 +57,7 @@ final class TeamRole extends Model
     /** @return BelongsTo<Team, $this> */
     public function team(): BelongsTo
     {
-        /** @var class-string<Team> $model */
-        $model = config('teams.models.team', Team::class);
-
-        return $this->belongsTo($model);
+        return $this->belongsTo(TeamModel::class());
     }
 
     public function toRole(): Role

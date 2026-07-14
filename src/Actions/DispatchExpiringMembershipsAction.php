@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Actions;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Events\MembershipExpiringSoon;
 use RoundlyConsulting\Teams\Models\Member;
+use RoundlyConsulting\Teams\Support\MemberModel;
 
 final class DispatchExpiringMembershipsAction
 {
@@ -19,11 +20,8 @@ final class DispatchExpiringMembershipsAction
      */
     public function execute(int $withinDays, bool $notify = true): Collection
     {
-        /** @var class-string<Member> $model */
-        $model = config('teams.models.member', Member::class);
-
         /** @var Collection<int, Member> $members */
-        $members = $model::query()->expiringWithin($withinDays)->get();
+        $members = MemberModel::query()->expiringWithin($withinDays)->get();
 
         if ($notify) {
             $members->each(static fn (Member $member) => MembershipExpiringSoon::dispatch($member));

@@ -9,25 +9,21 @@ use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Roles\Role;
+use RoundlyConsulting\Teams\Support\MemberModel;
+use RoundlyConsulting\Teams\Support\TeamModel;
 
 trait HasTeams
 {
     /** @return MorphMany<Member, $this> */
     public function teams(): MorphMany
     {
-        /** @var class-string<Member> $model */
-        $model = config('teams.models.member', Member::class);
-
-        return $this->morphMany($model, 'member');
+        return $this->morphMany(MemberModel::class(), 'member');
     }
 
     /** @return MorphMany<Team, $this> */
     public function ownedTeams(): MorphMany
     {
-        /** @var class-string<Team> $model */
-        $model = config('teams.models.team', Team::class);
-
-        return $this->morphMany($model, 'owner');
+        return $this->morphMany(TeamModel::class(), 'owner');
     }
 
     public function belongsToTeam(Team $team): bool

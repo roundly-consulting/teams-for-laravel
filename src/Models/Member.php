@@ -18,6 +18,8 @@ use RoundlyConsulting\Teams\Events\TeamMemberDeleted;
 use RoundlyConsulting\Teams\Roles\Role;
 use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
+use RoundlyConsulting\Teams\Support\InviteModel;
+use RoundlyConsulting\Teams\Support\TeamModel;
 
 /**
  * @property int $id
@@ -31,8 +33,11 @@ use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
+ *
+ * Deliberately not final: `teams.models.member` documents pointing the package at
+ * your own subclass, which final would forbid.
  */
-final class Member extends Model
+class Member extends Model
 {
     /** @use HasFactory<MemberFactory> */
     use HasFactory;
@@ -64,10 +69,7 @@ final class Member extends Model
     /** @return BelongsTo<Team, $this> */
     public function team(): BelongsTo
     {
-        /** @var class-string<Team> $model */
-        $model = config('teams.models.team', Team::class);
-
-        return $this->belongsTo($model);
+        return $this->belongsTo(TeamModel::class());
     }
 
     /** @return MorphTo<Model, $this> */
@@ -79,10 +81,7 @@ final class Member extends Model
     /** @return BelongsTo<Invite, $this> */
     public function acceptedInvite(): BelongsTo
     {
-        /** @var class-string<Invite> $model */
-        $model = config('teams.models.invite', Invite::class);
-
-        return $this->belongsTo($model, 'accepted_invite_id');
+        return $this->belongsTo(InviteModel::class(), 'accepted_invite_id');
     }
 
     /**

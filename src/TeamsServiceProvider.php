@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
+use RoundlyConsulting\PackageToolkit\Concerns\RegistersBladeDirectives;
+use RoundlyConsulting\PackageToolkit\Package;
+use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
 use RoundlyConsulting\Teams\Commands\MakePolicyCommand;
@@ -26,13 +27,62 @@ use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 use RoundlyConsulting\Teams\Roles\DatabaseRoleProvider;
 use RoundlyConsulting\Teams\Roles\InMemoryRoleProvider;
 use RoundlyConsulting\Teams\Roles\PermissionRegistry;
+use RoundlyConsulting\Teams\Roles\Permissions;
+use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
+use RoundlyConsulting\Teams\Support\InviteModel;
+use RoundlyConsulting\Teams\Support\JoinRequestModel;
+use RoundlyConsulting\Teams\Support\MemberModel;
+use RoundlyConsulting\Teams\Support\TeamModel;
+use RoundlyConsulting\Teams\Support\TeamRoleModel;
 
-final class TeamsServiceProvider extends ServiceProvider
+final class TeamsServiceProvider extends PackageServiceProvider
 {
+    use RegistersBladeDirectives;
+
+    public function configurePackage(Package $package): void
+    {
+        $package
+            ->name('teams')
+            ->hasConfigFile()
+            ->hasMigrations()
+            ->hasTranslations()
+            ->hasCommands([
+                ListRolesCommand::class,
+                ListPermissionsCommand::class,
+                PruneInvitesCommand::class,
+                PruneMembersCommand::class,
+                PruneJoinRequestsCommand::class,
+                MembersExpiringCommand::class,
+                ResendInviteCommand::class,
+                MakePolicyCommand::class,
+            ])
+            ->publishesStubs(
+                __DIR__.'/../stubs/AcceptInviteController.stub',
+                app_path('Http/Controllers/AcceptInviteController.php'),
+                'teams-stubs',
+            )
+            ->publishesStubs(
+                __DIR__.'/../stubs/teams-routes.stub',
+                base_path('routes/teams.php'),
+                'teams-stubs',
+            )
+            ->publishesStubs(
+                __DIR__.'/../stubs/TeamEventSubscriber.stub',
+                app_path('Listeners/TeamEventSubscriber.php'),
+                'teams-stubs',
+            )
+            ->publishesStubs(
+                __DIR__.'/../stubs/Pest.teams.stub',
+                base_path('tests/Teams.php'),
+                'teams-stubs',
+            )
+            ->contributesToAbout(fn (): array => $this->aboutSection());
+    }
+
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/teams.php', 'teams');
+        parent::register();
 
         $this->app->singleton(RoleProvider::class, function (): RoleProvider {
             if (config('teams.roles.provider') !== 'database') {
@@ -54,46 +104,22 @@ final class TeamsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'teams');
+        parent::boot();
 
         $this->registerGate();
 
         Event::listen(ApprovalRequestResolved::class, SyncJoinRequestStatusFromApproval::class);
-
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                ListRolesCommand::class,
-                ListPermissionsCommand::class,
-                PruneInvitesCommand::class,
-                PruneMembersCommand::class,
-                PruneJoinRequestsCommand::class,
-                MembersExpiringCommand::class,
-                ResendInviteCommand::class,
-                MakePolicyCommand::class,
-            ]);
-
-            $this->publishes([
-                __DIR__.'/../config/teams.php' => config_path('teams.php'),
-            ], 'teams-config');
-
-            $this->publishes([
-                __DIR__.'/../database/migrations' => database_path('migrations'),
-            ], 'teams-migrations');
-
-            $this->publishes([
-                __DIR__.'/../resources/lang' => $this->app->langPath('vendor/teams'),
-            ], 'teams-translations');
-
-            $this->publishes([
-                __DIR__.'/../stubs/AcceptInviteController.stub' => app_path('Http/Controllers/AcceptInviteController.php'),
-                __DIR__.'/../stubs/teams-routes.stub' => base_path('routes/teams.php'),
-                __DIR__.'/../stubs/TeamEventSubscriber.stub' => app_path('Listeners/TeamEventSubscriber.php'),
-                __DIR__.'/../stubs/Pest.teams.stub' => base_path('tests/Teams.php'),
-            ], 'teams-stubs');
-        }
     }
 
+    /**
+     * A `Gate::before` HOOK, deliberately not the toolkit's `defineGate()`.
+     *
+     * The toolkit trait registers a NAMED ability with `Gate::define()`. This
+     * package has no ability name to register: it pre-checks every ability the
+     * host checks, answers the ones under its configured prefix from the team's
+     * own role/permission set, and returns null for everything else so the host's
+     * own policies still decide. A definition could not fall through.
+     */
     private function registerGate(): void
     {
         if (! config('teams.gate.register')) {
@@ -123,25 +149,124 @@ final class TeamsServiceProvider extends ServiceProvider
                 return $team->isOwnedBy($user) ?: null;
             }
 
+            // `?: null` — a "no" must fall through to the host's own policies, not deny.
             return $team->memberHasPermission($user, $permission) ?: null;
         });
 
-        Blade::if('teamPermission', function (Team $team, string $permission, ?Model $member = null): bool {
+        $this->registerBladeIf('teamPermission', function (Team $team, string $permission, ?Model $member = null): bool {
             $member ??= auth()->user();
 
             return $member instanceof Model && $team->memberHasPermission($member, $permission);
         });
 
-        Blade::if('teamRole', function (Team $team, string $role, ?Model $member = null): bool {
+        $this->registerBladeIf('teamRole', function (Team $team, string $role, ?Model $member = null): bool {
             $member ??= auth()->user();
 
             return $member instanceof Model && $team->memberHasRole($member, $role);
         });
 
-        Blade::if('teamOwner', function (Team $team, ?Model $member = null): bool {
+        $this->registerBladeIf('teamOwner', function (Team $team, ?Model $member = null): bool {
             $member ??= auth()->user();
 
             return $member instanceof Model && $team->isOwnedBy($member);
         });
+    }
+
+    /**
+     * A team's roles, permissions and gate abilities are the HOST's own
+     * authorization vocabulary — a role key names a business function
+     * ("series-c-signatory") and a permission names what it may do. So the
+     * section reports models, switches, bounds and counts, and never a role key,
+     * a permission, an ability prefix, a cache store or a queue connection.
+     *
+     * @return array<string, string>
+     */
+    private function aboutSection(): array
+    {
+        return [
+            'Team model' => class_basename(TeamModel::class()),
+            'Member model' => class_basename(MemberModel::class()),
+            'Invite model' => class_basename(InviteModel::class()),
+            'Team role model' => class_basename(TeamRoleModel::class()),
+            'Join request model' => class_basename(JoinRequestModel::class()),
+            'Role provider' => config('teams.roles.provider') === 'database' ? 'database' : 'array',
+            'Registered roles' => $this->countOf(count(Roles::all()), 'role'),
+            'Registered permissions' => $this->countOf(count(Permissions::all()), 'permission'),
+            'Role keys' => $this->roleKeys(),
+            'Per-team roles' => config('teams.roles.per_team') ? 'ON' : 'OFF',
+            'Role cache' => $this->roleCache(),
+            'Invites' => sprintf(
+                'expire after %s, %d-char codes',
+                (string) config('teams.invites.expires_after', '7 days'),
+                (int) config('teams.invites.code_length', 32),
+            ),
+            'Members' => sprintf(
+                'prune %s after expiry, %d-day expiry warning',
+                (string) config('teams.members.prune_after', '30 days'),
+                (int) config('teams.members.expiring_within', 7),
+            ),
+            'Join requests' => 'prune '.((string) config('teams.join_requests.prune_after', '30 days')).' after resolution',
+            'Approvals' => $this->approvals(),
+            'Gate' => $this->gate(),
+            'Notification queue' => config('teams.notifications.queue_connection') !== null ? 'SET' : 'DEFAULT',
+        ];
+    }
+
+    private function countOf(int $count, string $noun): string
+    {
+        return $count === 0 ? 'NONE' : $count.' '.Str::plural($noun, $count);
+    }
+
+    /**
+     * Presence, never the keys: a host renames these to its own vocabulary.
+     */
+    private function roleKeys(): string
+    {
+        $packaged = config('teams.roles.owner') === 'owner'
+            && config('teams.roles.admin') === 'admin'
+            && config('teams.roles.default') === 'member';
+
+        return $packaged ? 'DEFAULT' : 'CUSTOMISED';
+    }
+
+    private function roleCache(): string
+    {
+        if (! config('teams.roles.cache.enabled')) {
+            return 'OFF';
+        }
+
+        return sprintf(
+            'ON (store %s, ttl %ds)',
+            config('teams.roles.cache.store') !== null ? 'SET' : 'DEFAULT',
+            (int) config('teams.roles.cache.ttl', 3600),
+        );
+    }
+
+    private function approvals(): string
+    {
+        if (! config('teams.approvals.enabled')) {
+            return 'OFF';
+        }
+
+        $quorum = config('teams.approvals.quorum');
+
+        return sprintf(
+            'ON (rule %s, quorum %s)',
+            (string) config('teams.approvals.rule', 'unanimous'),
+            $quorum !== null ? (string) (int) $quorum : 'NONE',
+        );
+    }
+
+    private function gate(): string
+    {
+        if (! config('teams.gate.register')) {
+            return 'OFF';
+        }
+
+        return sprintf(
+            'ON (prefix %s, owner ability %s)',
+            config('teams.gate.prefix') !== 'teams' ? 'SET' : 'DEFAULT',
+            config('teams.gate.owner_ability') !== 'owner' ? 'SET' : 'DEFAULT',
+        );
     }
 }

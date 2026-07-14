@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use RoundlyConsulting\Teams\TeamsServiceProvider;
 
 /**
  * The package ships six CREATEs wired together by five real foreign keys: four
@@ -20,8 +22,8 @@ use Illuminate\Support\Str;
  * the fixed order applied all six with all five keys, and a negative control (invites
  * before teams) was watched being rejected.
  *
- * These tests run the migration files, in the order a host gets them, into a database
- * that starts empty — which is what a host actually does.
+ * These tests run the *published* files, under their published names, into a database
+ * that starts empty — which is exactly what a host does (migrations are publish-only).
  */
 beforeEach(function (): void {
     $this->publishedPath = sys_get_temp_dir().'/teams-migration-order-'.bin2hex(random_bytes(6));
@@ -30,8 +32,8 @@ beforeEach(function (): void {
     File::makeDirectory($this->publishedPath, recursive: true);
     File::put($this->publishedDatabase, '');
 
-    foreach (glob(__DIR__.'/../../database/migrations/*.php') ?: [] as $source) {
-        File::copy($source, $this->publishedPath.'/'.basename($source));
+    foreach (ServiceProvider::pathsToPublish(TeamsServiceProvider::class, 'teams-migrations') as $source => $target) {
+        File::copy($source, $this->publishedPath.'/'.basename((string) $target));
     }
 
     config()->set('database.connections.published', [

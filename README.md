@@ -37,12 +37,17 @@ Install the package via Composer:
 composer require roundly-consulting/teams-for-laravel
 ```
 
-Publish and run the migrations:
+Publish and run the migrations. Publishing is **required** — the package does not
+auto-load its migrations, so a bare `php artisan migrate` will not create its tables:
 
 ```bash
 php artisan vendor:publish --tag="teams-migrations"
 php artisan migrate
 ```
+
+The six migrations publish timestamp-injected and in dependency order (`teams` first,
+then the tables whose foreign keys reference it), so they order correctly against your
+own migrations. Republishing lands on the same files, so `--force` overwrites in place.
 
 Optionally publish the config file or translations:
 

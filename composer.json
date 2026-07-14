@@ -29,18 +29,90 @@
         "roundly-consulting/options-for-laravel": "@dev"
     },
     "repositories": [
-        { "type": "path", "url": "../enums-for-laravel*", "options": { "symlink": true } },
-        { "type": "path", "url": "../options-for-laravel*", "options": { "symlink": true } },
-        { "type": "path", "url": "../contacts-for-laravel*", "options": { "symlink": true } },
-        { "type": "path", "url": "../addresses-for-laravel*", "options": { "symlink": true } },
-        { "type": "path", "url": "../approvals-for-laravel*", "options": { "symlink": true } },
-        { "type": "path", "url": "../connections-for-laravel*", "options": { "symlink": true } },
-        { "type": "vcs", "url": "https://github.com/roundly-consulting/enums-for-laravel", "no-api": true },
-        { "type": "vcs", "url": "https://github.com/roundly-consulting/options-for-laravel", "no-api": true },
-        { "type": "vcs", "url": "https://github.com/roundly-consulting/contacts-for-laravel", "no-api": true },
-        { "type": "vcs", "url": "https://github.com/roundly-consulting/addresses-for-laravel", "no-api": true },
-        { "type": "vcs", "url": "https://github.com/roundly-consulting/approvals-for-laravel", "no-api": true },
-        { "type": "vcs", "url": "https://github.com/roundly-consulting/connections-for-laravel", "no-api": true }
+        {
+            "type": "path",
+            "url": "../enums-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../options-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../contacts-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../addresses-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../approvals-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../connections-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/enums-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/options-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/contacts-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/addresses-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/approvals-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/connections-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "path",
+            "url": "../package-toolkit-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/package-toolkit-for-laravel",
+            "no-api": true
+        }
     ],
     "require-dev": {
         "larastan/larastan": "^3.0",

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -78,36 +77,23 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * Run the provider migrations the team integrations depend on, each in
-     * dependency order, from their own package directories.
+     * Run the migrations of the provider packages the team integrations depend on,
+     * each from its own package directory (directory order == dependency order).
      */
     private function loadProviderSchema(): void
     {
-        $migrations = [
-            OptionsServiceProvider::class => ['create_options_table'],
-            ContactsServiceProvider::class => ['create_contacts_table'],
-            AddressesServiceProvider::class => ['create_addresses_table'],
-            ConnectionsServiceProvider::class => ['create_connections_table'],
-            ApprovalsServiceProvider::class => [
-                'create_approvals_table',
-                'create_approval_requests_table',
-                'add_v11_columns_to_approvals_table',
-                'add_staging_to_approval_requests_table',
-                'create_approval_request_stages_table',
-                'create_approval_delegations_table',
-            ],
+        $providers = [
+            OptionsServiceProvider::class,
+            ContactsServiceProvider::class,
+            AddressesServiceProvider::class,
+            ConnectionsServiceProvider::class,
+            ApprovalsServiceProvider::class,
         ];
 
-        foreach ($migrations as $provider => $names) {
+        foreach ($providers as $provider) {
             $base = dirname((string) (new ReflectionClass($provider))->getFileName(), 2);
 
-            foreach ($names as $name) {
-                $migration = require "{$base}/database/migrations/{$name}.php";
-
-                if ($migration instanceof Migration) {
-                    $migration->up();
-                }
-            }
+            $this->loadMigrationsFrom($base.'/database/migrations');
         }
     }
 }

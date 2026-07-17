@@ -2,152 +2,140 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
+use RoundlyConsulting\PackageToolkit\Enums\DatabaseDriver;
+use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\TeamsServiceProvider;
+use RoundlyConsulting\Teams\Tests\User;
+use RoundlyConsulting\Testing\Database\DriverMatrix;
 
 /**
- * The package ships six CREATEs wired together by five real foreign keys: four
- * tables constrain onto `teams`, and `team_members` also constrains onto
- * `team_invites`. Publishing preserves the source directory's order, so that order
- * has to be runnable end to end from an empty database.
+ * M + P + R for the six team tables.
  *
- * SQLite happily creates a table referencing a missing parent — it only complains at
- * insert time — so these tests are the *committed* pin, not the proof. The order was
- * proved against a real PostgreSQL server, which rejects a dangling foreign key at
- * DDL time: the shipped directory order (plain alphabetical, so `create_teams_table`
- * sorted LAST) died on the very first file with `relation "teams" does not exist`,
- * the fixed order applied all six with all five keys, and a negative control (invites
- * before teams) was watched being rejected.
+ * This file replaces ~150 lines of hand-rolled reinvention: the suite published its own
+ * migrations into a temp directory, built its own throwaway database, ran `migrate` against
+ * it and read the foreign keys back with `Schema::getForeignKeys()`.
  *
- * These tests run the *published* files, under their published names, into a database
- * that starts empty — which is exactly what a host does (migrations are publish-only).
+ * The ideas were right, and its own docblock is the reason this row matters: it said in as
+ * many words that the checks were "the *committed* pin, not the proof", because SQLite
+ * happily creates a table referencing a missing parent and only complains at insert time —
+ * so the real proof had been done **by hand, once, against a PostgreSQL server**, and never
+ * again. That is precisely the gap the `R` assertion plus the `test-pgsql` leg close: the
+ * proof now runs on every CI run rather than living in a comment.
+ *
+ * The bug it records is this package's own: the shipped directory order was plain
+ * alphabetical, so `create_teams_table` sorted LAST and a fresh install died on the very
+ * first file with `relation "teams" does not exist`.
  */
-beforeEach(function (): void {
-    $this->publishedPath = sys_get_temp_dir().'/teams-migration-order-'.bin2hex(random_bytes(6));
-    $this->publishedDatabase = $this->publishedPath.'/database.sqlite';
+$migrations = __DIR__.'/../../database/migrations';
 
-    File::makeDirectory($this->publishedPath, recursive: true);
-    File::put($this->publishedDatabase, '');
-
-    foreach (ServiceProvider::pathsToPublish(TeamsServiceProvider::class, 'teams-migrations') as $source => $target) {
-        File::copy($source, $this->publishedPath.'/'.basename((string) $target));
-    }
-
-    config()->set('database.connections.published', [
-        'driver' => 'sqlite',
-        'database' => $this->publishedDatabase,
-        'prefix' => '',
-        'foreign_key_constraints' => true,
-    ]);
+/**
+ * M — the structural, engine-independent order pin.
+ *
+ * Publish order IS run order (directory sort), so a migration that constrains onto a table an
+ * earlier one has not created yet is uninstallable in a host. Five packages shipped exactly
+ * that under green SQLite suites; this was one of them.
+ *
+ * `foreignKeys: 5` pins the edge count: `team_invites`, `team_members`,
+ * `team_join_requests` and `team_role_overrides` each constrain `team_id` onto `teams`, and
+ * `team_members` additionally constrains `accepted_invite_id` onto `team_invites`.
+ *
+ * No `tableResolvers` are needed and that is a deliberate observation, not an omission: every
+ * edge here is a **bare** `->constrained()`, whose parent Laravel derives from the column
+ * name (`team_id` → `teams`), or a literal (`->constrained('team_invites')`). The assertion
+ * resolves both without a map — and it never guesses on a non-literal it cannot resolve, so
+ * if a future edge constrains through a `Model::table()` seam this pin FAILS loudly rather
+ * than silently dropping the edge and leaving `5` passing over a smaller graph.
+ *
+ * The `member` and `requester` columns are deliberately unconstrained morphs — a member can
+ * live in any host table.
+ */
+it('has a runnable migration order', function () use ($migrations): void {
+    expect($migrations)->toHaveRunnableMigrationOrder(foreignKeys: 5);
 });
 
-afterEach(function (): void {
-    File::deleteDirectory($this->publishedPath);
+/**
+ * P — the publish-only guards. The fleet publishes migrations timestamped rather than
+ * auto-loading them; doing both runs both copies and dies on a duplicate table (bug #5, on
+ * three packages). `count: 6` pins the file count so neither check can pass over an empty or
+ * relocated directory.
+ */
+it('never auto-loads its migrations — the host publishes them', function (): void {
+    expect(TeamsServiceProvider::class)->toNotAutoLoadMigrations();
 });
 
-it('migrates the published files clean from an empty database', function (): void {
-    $schema = Schema::connection('published');
-
-    expect($schema->hasTable('teams'))->toBeFalse();
-
-    $this->artisan('migrate', [
-        '--database' => 'published',
-        '--path' => $this->publishedPath,
-        '--realpath' => true,
-    ])->assertExitCode(0);
-
-    $tables = [
-        'teams', 'team_roles', 'team_invites',
-        'team_members', 'team_join_requests', 'team_role_overrides',
-    ];
-
-    foreach ($tables as $table) {
-        expect($schema->hasTable($table))->toBeTrue();
-    }
+it('publishes every migration timestamp-injected into the host', function (): void {
+    expect(TeamsServiceProvider::class)->toPublishMigrationsTimestamped('teams-migrations', 6);
 });
 
-it('keeps every foreign key intact in the published schema', function (): void {
-    $this->artisan('migrate', [
-        '--database' => 'published',
-        '--path' => $this->publishedPath,
-        '--realpath' => true,
-    ])->assertExitCode(0);
+/**
+ * R — the real-engine proof, and the whole point of this row. The deleted local version ran
+ * the published files against a throwaway SQLite database — the one engine that cannot fail
+ * this class of check — and openly said so. `migrations: 6` pins the count, and the
+ * expectation additionally fails a set that "applies cleanly" while creating no tables (an
+ * empty `up()` otherwise passes and proves nothing).
+ */
+it('applies its migrations on postgres', function () use ($migrations): void {
+    expect($migrations)->toApplyOnConnection('pgsql', migrations: 6);
+})->skip(fn (): bool => ! test()->connectionAvailable('pgsql'), 'no postgres connection available');
 
-    $schema = Schema::connection('published');
-
-    $foreignKeys = static fn (string $table): array => array_map(
-        static fn (array $key): string => $key['columns'][0].' → '.$key['foreign_table'],
-        $schema->getForeignKeys($table),
+/**
+ * The negative control — the "negative control (invites before teams) was watched being
+ * rejected" from the deleted file's docblock, turned into a test that runs. A green FK check
+ * proves nothing until you have watched the engine actually reject a broken order (forms
+ * #28). This fails loudly if the engine ACCEPTS the reordered set, which is what makes the
+ * positive half above meaningful.
+ */
+it('rejects a child-before-parent order on postgres', function () use ($migrations): void {
+    expect($migrations)->toRejectBrokenOrderOnConnection(
+        fn (array $files): array => array_reverse($files),
+        'pgsql',
     );
+})->skip(fn (): bool => ! test()->connectionAvailable('pgsql'), 'no postgres connection available');
 
-    // The CREATE order is load-bearing, not incidental: each child really does
-    // constrain onto a table created before it.
-    expect($foreignKeys('team_invites'))->toContain('team_id → teams')
-        ->and($foreignKeys('team_members'))
-        ->toContain('team_id → teams')
-        ->toContain('accepted_invite_id → team_invites')
-        ->and($foreignKeys('team_join_requests'))->toContain('team_id → teams')
-        ->and($foreignKeys('team_role_overrides'))->toContain('team_id → teams');
+/**
+ * The driver-truth pin: compares the env-declared driver against what the connection itself
+ * answers, so a leg that exports the location vars but not `TESTING_DB_DRIVER` (or a TestCase
+ * that decapitates the base case by overriding `defineEnvironment()` without `parent::`) reds
+ * instead of quietly running sqlite and reporting green as a "postgres" job. Strictly stronger
+ * than reading a skip count by hand.
+ */
+it('runs on the driver the leg declares', function (): void {
+    expect(DatabaseDriver::current())->toBe(DatabaseDriver::from(DriverMatrix::driver()));
 });
 
 /**
- * The structural pin — and the one that would have caught the shipped bug on SQLite.
- *
- * Read every `constrained()` out of the migration sources and assert the parent's
- * CREATE really does sort before the child's. Engine-independent, so it fails in CI
- * (SQLite) the moment someone adds a table whose foreign key outruns its target.
+ * The jsonb columns and the morph columns are what the drivers render differently — `json`
+ * has no equality operator on Postgres at all. Pinning a round-trip on whatever engine the leg
+ * configured proves the columns are usable rather than merely creatable, and that the five
+ * foreign keys are satisfiable rather than merely present.
  */
-it('creates every foreign key target before the table that references it', function (): void {
-    $sources = glob(__DIR__.'/../../database/migrations/*.php');
-    sort($sources);
+it('round-trips a team and its membership on the configured engine', function (): void {
+    $owner = User::query()->create();
+    $member = User::query()->create();
 
-    /** @var array<string, int> $createdAt */
-    $createdAt = [];
-    /** @var list<array{child: string, parent: string, at: int}> $edges */
-    $edges = [];
+    $team = Teams::createTeam(new CreateTeamData(
+        name: 'Acme',
+        owner: $owner,
+        meta: ['tier' => 2, 'region' => 'eu'],
+    ));
 
-    foreach ($sources as $position => $source) {
-        $body = (string) file_get_contents($source);
+    $membership = $team->addMember($member, 'admin');
 
-        preg_match("/Schema::create\('([a-z_]+)'/", $body, $created);
-        expect($created)->not->toBeEmpty();
+    $fresh = $team->fresh();
 
-        $createdAt[$created[1]] = $position;
-
-        // Both forms: `->constrained()` (the parent table is derived from the column
-        // name) and `->constrained('explicit_table')`.
-        preg_match_all(
-            "/foreignId\('([a-z_]+)'\).*?->constrained\(\s*(?:'([a-z_]+)')?\s*\)/s",
-            $body,
-            $matches,
-            PREG_SET_ORDER,
-        );
-
-        // Guard the guard: every `->constrained(` in the source was actually paired.
-        expect($matches)->toHaveCount(substr_count($body, '->constrained('));
-
-        foreach ($matches as $match) {
-            $parent = ($match[2] ?? '') !== ''
-                ? $match[2]
-                : Str::plural(Str::beforeLast($match[1], '_id'));
-
-            $edges[] = ['child' => $created[1], 'parent' => $parent, 'at' => $position];
-        }
-    }
-
-    // The package really does emit the foreign keys this test is guarding.
-    expect($edges)->toHaveCount(5);
-
-    foreach ($edges as $edge) {
-        expect($createdAt)->toHaveKey($edge['parent']);
-
-        expect($createdAt[$edge['parent']])
-            ->toBeLessThan(
-                $edge['at'],
-                "{$edge['child']} references {$edge['parent']}, which must be created first",
-            );
-    }
+    expect($fresh?->name)->toBe('Acme')
+        ->and($team->hasMember($member))->toBeTrue()
+        ->and($membership->role)->toBe('admin')
+        // The morph columns really resolve on the configured engine, not just on sqlite's
+        // type affinity.
+        ->and($membership->member_type)->toBe($member->getMorphClass())
+        ->and($membership->member_id)->toBe($member->getKey())
+        // Key-by-key rather than `toBe` on the whole map: jsonb sorts object keys (by
+        // length, then bytewise), so `['tier' => 2, 'region' => 'eu']` comes back reordered
+        // and a whole-map `toBe` (`===`, order-sensitive) would red on Postgres while
+        // passing on sqlite. `toEqual` would hide the opposite bug — it is `==`, so it would
+        // accept the string "2" for the int 2, which is what a round-trip pin exists to catch.
+        ->and($fresh?->meta['tier'] ?? null)->toBe(2)
+        ->and($fresh?->meta['region'] ?? null)->toBe('eu');
 });

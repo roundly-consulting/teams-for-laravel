@@ -93,10 +93,20 @@ it('registers every console command', function (): void {
 });
 
 /**
- * A team's role keys, permissions and gate abilities are the HOST's own
- * authorization vocabulary — a role key names a business function and a permission
- * names what it may do. The section reports models, switches, bounds and counts,
- * and must never render one of them, nor a cache store or a queue connection.
+ * A — the secret-safe `about` capture.
+ *
+ * A team's role keys, permissions and gate abilities are the HOST's own authorization
+ * vocabulary — a role key names a business function and a permission names what it may do.
+ * The section reports models, switches, bounds and counts, and must never render one of
+ * them, nor a cache store or a queue connection.
+ *
+ * The local version this replaces was already non-vacuous: it captured through
+ * `Artisan::call()` + `Artisan::output()`, not `app(Kernel::class)->output()` — the `''` that
+ * made purchases #13's entire leak check pass against empty output — and it even wrote
+ * "guard the guard" above its own non-empty check. The preset is adopted because it makes
+ * that ordering structural rather than a habit: `mustRender` is required and non-empty, the
+ * capture is asserted non-empty, and every positive is proven present BEFORE any secret is
+ * looked for. A negative-only case cannot be written with it.
  */
 it('reports the package in about without leaking the host vocabulary', function (): void {
     config()->set('teams.roles.default', 'series-c-signatory');
@@ -109,25 +119,31 @@ it('reports the package in about without leaking the host vocabulary', function 
     Roles::register('series-c-signatory', 'Signatory', ['treasury.wire']);
     Permissions::register('treasury.wire', 'Wire funds');
 
-    Artisan::call('about', ['--only' => 'teams']);
-    $rendered = Artisan::output();
-
-    // Guard the guard: an empty capture would make every negative below vacuous.
-    expect($rendered)->toContain('Team model')->toContain('Team');
-
-    expect($rendered)
-        ->not->toContain('series-c-signatory')
-        ->not->toContain('treasury.wire')
-        ->not->toContain('acme-authz')
-        ->not->toContain('principal')
-        ->not->toContain('tenant-redis')
-        ->not->toContain('sqs-tenant-eu');
-
-    // What it *does* report: presence, counts and switches. The suite registers
-    // `admin` and `user` on top of the role above, so the count is three.
-    expect($rendered)
-        ->toContain('CUSTOMISED')
-        ->toContain('SET')
-        ->toContain('3 roles')
-        ->toContain('1 permission');
+    expect('teams')->toLeakNoSecrets(
+        secrets: [
+            // A role key names a host business function; a permission names what it may do.
+            // Both are reported by count only.
+            'series-c-signatory',
+            'treasury.wire',
+            // Gate vocabulary — reported as CUSTOMISED/DEFAULT, never by name.
+            'acme-authz',
+            'principal',
+            // Host infrastructure — reported by presence only.
+            'tenant-redis',
+            'sqs-tenant-eu',
+        ],
+        mustRender: [
+            'Team model',
+            'Team',
+            // The positive halves that prove the lines report rather than sit empty: the
+            // counts themselves and the presence markers. Without these the secret checks
+            // above would be aimed at a section that might have printed nothing at all. The
+            // suite registers `admin` and `user` on top of the role above, so the count is
+            // three.
+            'CUSTOMISED',
+            'SET',
+            '3 roles',
+            '1 permission',
+        ],
+    );
 });

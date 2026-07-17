@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBladeDirectives;
+use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
@@ -39,6 +40,7 @@ use RoundlyConsulting\Teams\Support\TeamRoleModel;
 final class TeamsServiceProvider extends PackageServiceProvider
 {
     use RegistersBladeDirectives;
+    use RegistersBlueprintMacros;
 
     public function configurePackage(Package $package): void
     {
@@ -105,6 +107,10 @@ final class TeamsServiceProvider extends PackageServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        // The migrations' key-type-aware morph columns are macros, so they must
+        // exist before a host runs `php artisan migrate`.
+        $this->registerBlueprintMacros();
 
         $this->registerGate();
 

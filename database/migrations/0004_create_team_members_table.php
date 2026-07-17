@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('role')->nullable();
             $table->foreignId('accepted_invite_id')->nullable()->index()
                 ->constrained('team_invites')->nullOnDelete();
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
             $table->softDeletes();

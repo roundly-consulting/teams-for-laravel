@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->string('key');
             $table->string('name');
-            $table->json('permissions')->nullable();
+            $table->jsonb('permissions')->nullable();
             $table->string('description')->default('');
             $table->timestamps();
             $table->softDeletes();

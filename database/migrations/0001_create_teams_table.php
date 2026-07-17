@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->boolean('is_public')->default(false);
             $table->nullableMorphs('owner');
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

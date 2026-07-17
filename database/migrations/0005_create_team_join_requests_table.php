@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('requested_role')->nullable();
             $table->string('status')->default('pending')->index();
             $table->text('message')->nullable();
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->nullableMorphs('responded_by');
             $table->timestamp('responded_at')->nullable();
             $table->timestamp('expires_at')->nullable()->index();

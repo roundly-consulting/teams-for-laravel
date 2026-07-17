@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('role');
             $table->string('email')->nullable()->index();
             $table->nullableMorphs('invited_by');
-            $table->json('meta')->nullable();
+            $table->jsonb('meta')->nullable();
             $table->unsignedInteger('uses')->default(0);
             $table->unsignedInteger('max_uses')->nullable();
             $table->timestamp('expires_at');

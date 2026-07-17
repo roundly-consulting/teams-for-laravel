@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->string('key')->unique();
             $table->string('name');
-            $table->json('permissions')->nullable();
+            $table->jsonb('permissions')->nullable();
             $table->string('description')->default('');
             $table->timestamps();
             $table->softDeletes();

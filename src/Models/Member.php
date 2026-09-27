@@ -95,7 +95,7 @@ class Member extends Model
         }
 
         // With per-team overrides off, resolve against the global provider
-        // directly so no team relation is loaded (BC: zero extra queries).
+        // directly so no team relation is loaded (zero extra queries).
         if (! config('teams.roles.per_team', false)) {
             return Roles::find($this->role);
         }

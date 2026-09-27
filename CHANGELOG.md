@@ -1,29 +1,31 @@
 # Changelog
 
-All notable changes to `teams-for-laravel` will be documented in this file.
+All notable changes to `teams-for-laravel` are documented in this file. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
-### Added
-- `Teams` facade and fluent `TeamBuilder` as a single, discoverable entry point.
-- Action layer (`src/Actions`) and typed DTOs (`src/DataTransferObjects`) for every operation.
-- Config-switchable role storage: in-memory (`array`) or database (`database`) driver behind a
-  shared `RoleProvider` contract, plus a `Permission` value object.
-- Team ownership (`owner` morph, `isOwnedBy`, `transferOwnershipTo`) with ownership transfer
-  that demotes the previous owner to the configured admin role.
-- Email-targeted invites with `invited_by`, `pending`/`forEmail` scopes, `revoke()`, and
-  `code`-based route-model binding.
-- Laravel Gate abilities and `@teamPermission` / `@teamRole` Blade directives (on by default,
-  opt out with `TEAMS_REGISTER_GATE=false`).
-- Query scopes (`Team::public`, `Team::withMember`) and richer `HasTeams` readers
-  (`hasTeam`, `isMemberOf`, `teamsWithRole`, `ownedTeams`).
-- Artisan commands `teams:roles` and `teams:invites:prune`.
-- New events: `TeamMemberRoleChanged`, `InviteRevoked`, `TeamOwnershipTransferred`.
-- Typed exceptions under `src/Exceptions` with translatable messages.
+Initial public release.
 
-### Changed
-- **Accepting an expired invite now throws `InviteExpiredException`** instead of silently
-  adding the member. Use `$invite->isExpired()` to pre-check. This fixes a latent correctness
-  bug where stale invite links could still be accepted.
-- Adding an existing member is idempotent: it returns the existing membership and updates the
-  role when it differs, instead of creating a duplicate.
+### Added
+
+- Teams that any Eloquent model can own and join (`HasTeams`, `BelongsToTeam`), with members,
+  roles and permissions.
+- A `Teams` facade with a fluent builder (`Teams::for($team)->addMember(...)`), backed by action
+  classes and DTOs.
+- Roles defined in code or stored in the database (`Roles::register()`), per-team role
+  overrides, an optional cache, and a `Permissions` registry for picker UIs.
+- Ownership transfer and a first-class owner ability, including the `@teamOwner` Blade directive.
+- Time-boxed memberships with expiry reports, renewal events and pruning.
+- Expiring, email-targeted and multi-use invites with resend and revoke, accepted by code.
+- Join requests (the inverse of invites) with approve / deny and optional expiry.
+- Laravel Gate integration plus `@teamPermission` and `@teamRole` Blade directives, and team
+  policies (`AbstractTeamPolicy`, `HasTeamPolicies`, `teams:policy`).
+- Artisan commands to list roles and permissions, prune invites, members and join requests, and
+  report expiring memberships.
+- Events for members, roles, invites, ownership, join requests and membership expiry, plus
+  publishable controller, policy and notification stubs.
+- Team settings, contacts, addresses, multi-admin join-request sign-off and team affiliations
+  via the companion `options`, `contacts`, `addresses`, `approvals` and `connections` packages.
+- `Teams::fake()` with assertions and Pest expectation matchers for tests.

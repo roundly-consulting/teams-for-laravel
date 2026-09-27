@@ -10,3 +10,4 @@
 /.editorconfig      export-ignore
 /testbench.yaml     export-ignore
 /phpstan.neon       export-ignore
+/art                export-ignore

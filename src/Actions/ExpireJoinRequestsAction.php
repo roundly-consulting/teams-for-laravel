@@ -9,7 +9,7 @@ use RoundlyConsulting\Teams\Events\JoinRequestExpired;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
 
-final class ExpireJoinRequestsAction
+final readonly class ExpireJoinRequestsAction
 {
     /**
      * Auto-decline pending join requests whose expiry has passed, firing

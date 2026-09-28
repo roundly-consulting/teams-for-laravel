@@ -18,10 +18,7 @@ class AcceptInviteController extends Controller
     {
         $user = $request->user();
 
-        Teams::acceptInvite($invite, new \RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData(
-            member: $user,
-            email: $user->email,
-        ));
+        Teams::invites()->accept($invite, $user, email: $user->email);
 
         return redirect()->route('teams.show', $invite->team);
     }

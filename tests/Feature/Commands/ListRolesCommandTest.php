@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
-use RoundlyConsulting\Teams\Roles\Roles;
 
 it('lists registered roles', function () {
-    Roles::register('editor', 'Editor', ['edit', 'publish']);
+    Teams::roles()->register('editor', 'Editor', ['edit', 'publish']);
 
     $exitCode = Artisan::call('teams:roles');
     $output = Artisan::output();

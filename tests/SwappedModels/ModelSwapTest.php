@@ -34,7 +34,7 @@ it('honours a host team model through the creation flow', function (): void {
     expect('teams.models.team')->toHonourModelSwap(CustomTeam::class, function (): array {
         $owner = User::query()->create();
 
-        $team = Teams::createTeam(new CreateTeamData(name: 'Acme', owner: $owner));
+        $team = Teams::create(new CreateTeamData(name: 'Acme', owner: $owner));
 
         return [
             $team,
@@ -46,7 +46,7 @@ it('honours a host team model through the creation flow', function (): void {
 
 it('honours a host member model through the membership flow', function (): void {
     expect('teams.models.member')->toHonourModelSwap(CustomMember::class, function (): array {
-        $team = Teams::createTeam(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
+        $team = Teams::create(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
 
         $member = $team->addMember(User::query()->create(), 'admin');
 
@@ -60,9 +60,9 @@ it('honours a host member model through the membership flow', function (): void 
 
 it('honours a host invite model through the invite flow', function (): void {
     expect('teams.models.invite')->toHonourModelSwap(CustomInvite::class, function (): array {
-        $team = Teams::createTeam(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
+        $team = Teams::create(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
 
-        $invite = $team->invite(now()->addWeek(), 'user');
+        $invite = $team->invite('user', now()->addWeek());
 
         return [
             $invite,
@@ -75,7 +75,7 @@ it('honours a host team-role model through the per-team role flow', function ():
     config()->set('teams.roles.per_team', true);
 
     expect('teams.models.team_role')->toHonourModelSwap(CustomTeamRole::class, function (): array {
-        $team = Teams::createTeam(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
+        $team = Teams::create(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
 
         $role = $team->defineRole('lead', 'Lead', ['posts.publish']);
 
@@ -88,9 +88,9 @@ it('honours a host team-role model through the per-team role flow', function ():
 
 it('honours a host join-request model through the join flow', function (): void {
     expect('teams.models.join_request')->toHonourModelSwap(CustomJoinRequest::class, function (): array {
-        $team = Teams::createTeam(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
+        $team = Teams::create(new CreateTeamData(name: 'Acme', owner: User::query()->create()));
 
-        $request = app('teams')->requestToJoin($team, User::query()->create(), 'user');
+        $request = Teams::for($team)->joinRequests()->open(User::query()->create(), 'user');
 
         return [
             $request,

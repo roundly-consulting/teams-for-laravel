@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use RoundlyConsulting\Teams\Events\TeamMemberDeleted;
 use RoundlyConsulting\Teams\Models\Team;
 
-final class RemoveMemberAction
+final readonly class RemoveMemberAction
 {
     public function execute(Team $team, Model $member): bool
     {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Commands;
 
 use Illuminate\Console\Command;
-use RoundlyConsulting\Teams\Roles\Permissions;
+use RoundlyConsulting\Teams\TeamsManager;
 
 final class ListPermissionsCommand extends Command
 {
@@ -15,9 +15,9 @@ final class ListPermissionsCommand extends Command
     /** @var string */
     protected $description = 'List the registered permissions and their groups';
 
-    public function handle(): int
+    public function handle(TeamsManager $teams): int
     {
-        $permissions = Permissions::all();
+        $permissions = $teams->permissions()->all();
 
         if ($permissions === []) {
             $this->info('No permissions are registered.');

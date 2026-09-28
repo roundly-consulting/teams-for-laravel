@@ -6,7 +6,7 @@ namespace RoundlyConsulting\Teams\Actions;
 
 use RoundlyConsulting\Teams\Support\InviteModel;
 
-final class PruneInvitesAction
+final readonly class PruneInvitesAction
 {
     /**
      * Force-delete invites that expired more than a month ago.

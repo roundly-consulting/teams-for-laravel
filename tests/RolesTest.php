@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Roles\Role;
-use RoundlyConsulting\Teams\Roles\Roles;
 
 it('returns all registered roles', function () {
     // roles are registered in TestCase file
 
-    expect(Roles::all())
+    expect(Teams::roles()->all())
         ->toBeArray()
         ->toHaveKeys(['admin', 'user'])
-        ->and(Roles::all()['admin'])
+        ->and(Teams::roles()->all()['admin'])
         ->key->toBe('admin')
         ->name->toBe('Admin')
         ->permissions->toBe(['*']);
 });
 
 it('returns registered role', function () {
-    $role = Roles::find('admin');
+    $role = Teams::roles()->find('admin');
 
     expect($role)
         ->key->toBe('admin')
@@ -27,7 +27,7 @@ it('returns registered role', function () {
 });
 
 it('registers and returns role', function () {
-    $role = Roles::register('unique', 'Unique role', ['one']);
+    $role = Teams::roles()->register('unique', 'Unique role', ['one']);
 
     expect($role)
         ->toBeInstanceOf(Role::class)

@@ -7,7 +7,7 @@ namespace RoundlyConsulting\Teams\Actions;
 use RoundlyConsulting\Teams\Events\InviteRevoked;
 use RoundlyConsulting\Teams\Models\Invite;
 
-final class RevokeInviteAction
+final readonly class RevokeInviteAction
 {
     public function execute(Invite $invite): bool
     {

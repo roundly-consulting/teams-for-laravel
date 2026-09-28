@@ -12,7 +12,7 @@ use RoundlyConsulting\Connections\ConnectionsServiceProvider;
 use RoundlyConsulting\Contacts\ContactsServiceProvider;
 use RoundlyConsulting\Options\Facades\Options;
 use RoundlyConsulting\Options\OptionsServiceProvider;
-use RoundlyConsulting\Teams\Roles\Roles;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\TeamsServiceProvider;
 use RoundlyConsulting\Testing\PackageTestCase;
 
@@ -26,8 +26,8 @@ abstract class TestCase extends PackageTestCase
             fn (string $modelName): string => 'RoundlyConsulting\\Teams\\Database\\Factories\\'.class_basename($modelName).'Factory'
         );
 
-        Roles::register('admin', 'Admin', ['*']);
-        Roles::register('user', 'User');
+        Teams::roles()->register('admin', 'Admin', ['*']);
+        Teams::roles()->register('user', 'User');
 
         // The options package memoises resolved values in a static, per-process cache that
         // would otherwise leak across tests.

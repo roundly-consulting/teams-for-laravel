@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Addresses\AddressBook;
+use RoundlyConsulting\Addresses\DataTransferObjects\AddressData;
 use RoundlyConsulting\Addresses\Enums\AddressType;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
@@ -60,17 +62,21 @@ it('persists addresses against the team addressable morph', function (): void {
         ->and((string) $address->addressable_id)->toBe((string) $team->getKey());
 });
 
-it('adds an address fluently through the team builder', function (): void {
+it('delegates to the addresses package through the team handle', function (): void {
     $team = Team::factory()->create();
 
-    Teams::for($team)->addAddress(
+    $addresses = Teams::for($team)->addresses();
+
+    $addresses->add(new AddressData(
         city: 'Rome',
         street: '5 Via Roma',
         postalCode: '00184',
-        countryIsoCode: 'IT',
-        isPrimary: true,
+        countryIso: 'IT',
         type: AddressType::Billing,
-    );
+        isPrimary: true,
+    ));
 
-    expect($team->getPrimaryAddressOfType(AddressType::Billing)?->city)->toBe('Rome');
+    expect($addresses)->toBeInstanceOf(AddressBook::class)
+        ->and($addresses->primary(AddressType::Billing)?->city)->toBe('Rome')
+        ->and($team->getPrimaryAddressOfType(AddressType::Billing)?->city)->toBe('Rome');
 });

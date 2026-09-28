@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Model;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Policies\AbstractTeamPolicy;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Tests\User;
 
-beforeEach(fn () => Roles::register('editor', 'Editor', ['posts.edit']));
+beforeEach(fn () => Teams::roles()->register('editor', 'Editor', ['posts.edit']));
 
 function teamPolicy(): object
 {

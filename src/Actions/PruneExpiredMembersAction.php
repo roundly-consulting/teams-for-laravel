@@ -8,7 +8,7 @@ use RoundlyConsulting\Teams\Events\MembershipExpired;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Support\MemberModel;
 
-final class PruneExpiredMembersAction
+final readonly class PruneExpiredMembersAction
 {
     /**
      * Force-delete members whose expiry passed more than the configured

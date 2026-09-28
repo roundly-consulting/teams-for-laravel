@@ -11,7 +11,7 @@ use RoundlyConsulting\Teams\Events\InviteCreated;
 use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\Team;
 
-final class CreateInviteAction
+final readonly class CreateInviteAction
 {
     public function execute(Team $team, CreateInviteData $data): Invite
     {

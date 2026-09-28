@@ -9,17 +9,20 @@ use RoundlyConsulting\Teams\Events\MembershipExpiringSoon;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Support\MemberModel;
 
-final class DispatchExpiringMembershipsAction
+final readonly class DispatchExpiringMembershipsAction
 {
     /**
-     * Collect active memberships lapsing within $withinDays. When $notify is
-     * true, fire MembershipExpiringSoon for each. Already-expired and
-     * never-expiring memberships are excluded.
+     * Collect active memberships lapsing within $withinDays (default
+     * teams.members.expiring_within). When $notify is true, fire
+     * MembershipExpiringSoon for each. Already-expired and never-expiring
+     * memberships are excluded.
      *
      * @return Collection<int, Member>
      */
-    public function execute(int $withinDays, bool $notify = true): Collection
+    public function execute(?int $withinDays = null, bool $notify = true): Collection
     {
+        $withinDays ??= (int) config('teams.members.expiring_within', 7);
+
         /** @var Collection<int, Member> $members */
         $members = MemberModel::query()->expiringWithin($withinDays)->get();
 

@@ -14,13 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
-use RoundlyConsulting\Teams\Actions\AcceptInviteAction;
-use RoundlyConsulting\Teams\Actions\ResendInviteAction;
-use RoundlyConsulting\Teams\Actions\RevokeInviteAction;
 use RoundlyConsulting\Teams\Database\Factories\InviteFactory;
-use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
 use RoundlyConsulting\Teams\Support\MemberModel;
 use RoundlyConsulting\Teams\Support\TeamModel;
+use RoundlyConsulting\Teams\TeamsManager;
 
 /**
  * @property int $id
@@ -158,27 +155,41 @@ class Invite extends Model
         return $this->max_uses !== null && $this->uses >= $this->max_uses;
     }
 
+    /**
+     * Accept this invite as `$member` — `Teams::invites()->accept($invite, …)`.
+     */
     public function acceptBy(Model $member, ?string $email = null): Member
     {
-        return app(AcceptInviteAction::class)->execute($this, new AcceptInviteData(
-            member: $member,
-            email: $email,
-        ));
+        return app(TeamsManager::class)->invites()->accept($this, $member, $email);
     }
 
+    /**
+     * Rotate the code and extend the expiry — `Teams::for($team)->invites()->resend($invite)`.
+     */
     public function resend(): self
     {
-        return app(ResendInviteAction::class)->execute($this);
+        return app(TeamsManager::class)->for($this->owningTeam())->invites()->resend($this);
     }
 
+    /**
+     * `Teams::for($team)->invites()->revoke($invite)`.
+     */
     public function revoke(): bool
     {
-        return app(RevokeInviteAction::class)->execute($this);
+        return app(TeamsManager::class)->for($this->owningTeam())->invites()->revoke($this);
     }
 
     /** @return Builder<Invite> */
     public function prunable(): Builder
     {
         return self::query()->where('expires_at', '<=', now()->subMonth());
+    }
+
+    private function owningTeam(): Team
+    {
+        /** @var Team $team */
+        $team = $this->team;
+
+        return $team;
     }
 }

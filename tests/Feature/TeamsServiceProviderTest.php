@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
-use RoundlyConsulting\Teams\Roles\Permissions;
-use RoundlyConsulting\Teams\Roles\Roles;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\TeamsServiceProvider;
 
 /**
@@ -116,8 +115,8 @@ it('reports the package in about without leaking the host vocabulary', function 
     config()->set('teams.gate.owner_ability', 'principal');
     config()->set('teams.notifications.queue_connection', 'sqs-tenant-eu');
 
-    Roles::register('series-c-signatory', 'Signatory', ['treasury.wire']);
-    Permissions::register('treasury.wire', 'Wire funds');
+    Teams::roles()->register('series-c-signatory', 'Signatory', ['treasury.wire']);
+    Teams::permissions()->register('treasury.wire', 'Wire funds');
 
     expect('teams')->toLeakNoSecrets(
         secrets: [

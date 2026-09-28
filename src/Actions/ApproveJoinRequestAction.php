@@ -15,10 +15,10 @@ use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Options\DefaultMemberRole;
 
-final class ApproveJoinRequestAction
+final readonly class ApproveJoinRequestAction
 {
     public function __construct(
-        private readonly AddMemberAction $addMember,
+        private AddMemberAction $addMember,
     ) {}
 
     /**

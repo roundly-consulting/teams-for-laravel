@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Contacts\ContactBook;
 use RoundlyConsulting\Contacts\Enums\ContactType;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
@@ -36,14 +37,17 @@ it('persists contacts against the team owner morph', function (): void {
         ->and((string) $contact->owner_id)->toBe((string) $team->getKey());
 });
 
-it('adds contacts fluently through the team builder', function (): void {
+it('delegates to the contacts package through the team handle', function (): void {
     $team = Team::factory()->create();
 
-    Teams::for($team)->addContactEmail('help@acme.io', 'help', primary: true);
-    Teams::for($team)->addContactPhone('+15551234567', 'hotline');
-    Teams::for($team)->addContactUrl('https://status.acme.io', 'status');
+    $contacts = Teams::for($team)->contacts();
 
-    expect($team->primaryEmail()?->value)->toBe('help@acme.io')
-        ->and($team->contactsOfType(ContactType::Phone))->toHaveCount(1)
-        ->and($team->contactsOfType(ContactType::Url))->toHaveCount(1);
+    $contacts->email('help@acme.io')->label('help')->primary()->add();
+    $contacts->phone('+15551234567')->label('hotline')->add();
+    $contacts->url('https://status.acme.io')->label('status')->add();
+
+    expect($contacts)->toBeInstanceOf(ContactBook::class)
+        ->and($team->primaryEmail()?->value)->toBe('help@acme.io')
+        ->and($contacts->ofType(ContactType::Phone))->toHaveCount(1)
+        ->and($contacts->ofType(ContactType::Url))->toHaveCount(1);
 });

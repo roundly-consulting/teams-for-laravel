@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Gate;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Tests\User;
 
 beforeEach(function () {
-    Roles::register('manager', 'Manager', ['manage-billing']);
+    Teams::roles()->register('manager', 'Manager', ['manage-billing']);
 });
 
 it('allows a permitted ability through the gate', function () {

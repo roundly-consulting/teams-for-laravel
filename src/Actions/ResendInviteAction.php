@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 use RoundlyConsulting\Teams\Events\InviteResent;
 use RoundlyConsulting\Teams\Models\Invite;
 
-final class ResendInviteAction
+final readonly class ResendInviteAction
 {
     /**
      * Re-issue an invite in place: rotate the code and extend the expiry from

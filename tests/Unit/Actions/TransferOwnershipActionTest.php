@@ -7,7 +7,7 @@ use RoundlyConsulting\Teams\Actions\TransferOwnershipAction;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\Events\TeamOwnershipTransferred;
 use RoundlyConsulting\Teams\Models\Team;
-use RoundlyConsulting\Teams\Teams;
+use RoundlyConsulting\Teams\TeamsManager;
 use RoundlyConsulting\Teams\Tests\User;
 
 it('transfers ownership and demotes the previous owner to admin', function () {
@@ -18,7 +18,7 @@ it('transfers ownership and demotes the previous owner to admin', function () {
     $oldOwner = User::create();
     $newOwner = User::create();
 
-    $team = app(Teams::class)->createTeam(new CreateTeamData(name: 'Acme', owner: $oldOwner));
+    $team = app(TeamsManager::class)->create(new CreateTeamData(name: 'Acme', owner: $oldOwner));
 
     app(TransferOwnershipAction::class)->execute($team, $newOwner);
 

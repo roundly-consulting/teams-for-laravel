@@ -53,7 +53,7 @@ it('removes member from team', function () {
         'foo' => 'bar',
     ]);
 
-    $member->removeFromTeam();
+    expect($member->removeFromTeam())->toBeTrue();
 
     Event::assertDispatched(fn (TeamMemberDeleted $e) => $e->member->is($member));
 

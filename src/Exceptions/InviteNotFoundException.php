@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Exceptions;
 
+use RoundlyConsulting\Teams\Models\Invite;
+
 final class InviteNotFoundException extends TeamsException
 {
     public static function forCode(string $code): self
     {
         return new self(trans('teams::errors.invite_not_found', ['code' => $code]));
+    }
+
+    /**
+     * A team-scoped handle was handed another team's invite. The message names the
+     * invite by id, never by its code — the code is the credential.
+     */
+    public static function inTeam(Invite $invite): self
+    {
+        return new self(trans('teams::errors.invite_not_in_team', ['id' => (string) $invite->getKey()]));
     }
 }

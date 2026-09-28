@@ -9,10 +9,10 @@ use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Events\TeamOwnershipTransferred;
 use RoundlyConsulting\Teams\Models\Team;
 
-final class TransferOwnershipAction
+final readonly class TransferOwnershipAction
 {
     public function __construct(
-        private readonly AddMemberAction $addMember,
+        private AddMemberAction $addMember,
     ) {}
 
     /**

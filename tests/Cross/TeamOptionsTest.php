@@ -88,14 +88,14 @@ it('rejects a join request on an invite-only team', function (): void {
     $team = Team::factory()->create();
     Teams::for($team)->settings()->setJoinPolicy(JoinPolicy::InviteOnly);
 
-    expect(fn () => Teams::requestToJoin($team, User::create()))
+    expect(fn () => Teams::for($team)->joinRequests()->open(User::create()))
         ->toThrow(TeamsException::class, 'invite-only');
 });
 
 it('leaves a join request pending under the request policy', function (): void {
     $team = Team::factory()->create();
 
-    $request = Teams::requestToJoin($team, User::create());
+    $request = Teams::for($team)->joinRequests()->open(User::create());
 
     expect($request->status)->toBe(JoinRequestStatus::Pending)
         ->and($team->members()->count())->toBe(0);
@@ -106,7 +106,7 @@ it('auto-approves a join request on an open team', function (): void {
     Teams::for($team)->settings()->setJoinPolicy(JoinPolicy::Open);
     $user = User::create();
 
-    $request = Teams::requestToJoin($team, $user);
+    $request = Teams::for($team)->joinRequests()->open($user);
 
     expect($request->status)->toBe(JoinRequestStatus::Approved)
         ->and($team->hasMember($user))->toBeTrue();
@@ -119,7 +119,7 @@ it('keeps an open-team request pending when approval is required', function (): 
         ->setRequireApprovalToJoin(true);
     $user = User::create();
 
-    $request = Teams::requestToJoin($team, $user);
+    $request = Teams::for($team)->joinRequests()->open($user);
 
     expect($request->status)->toBe(JoinRequestStatus::Pending)
         ->and($team->hasMember($user))->toBeFalse();
@@ -129,9 +129,9 @@ it('approves a join request with the team default member role', function (): voi
     $team = Team::factory()->create();
     Teams::for($team)->settings()->setDefaultMemberRole('admin');
     $user = User::create();
-    $request = Teams::requestToJoin($team, $user);
+    $request = Teams::for($team)->joinRequests()->open($user);
 
-    $member = Teams::for($team)->approveJoinRequest($request, User::create());
+    $member = Teams::for($team)->joinRequests()->approve($request, by: User::create());
 
     expect($member->role)->toBe('admin');
 });
@@ -140,9 +140,9 @@ it('falls back to the config default role when no team default is set', function
     config()->set('teams.roles.default', 'user');
     $team = Team::factory()->create();
     $user = User::create();
-    $request = Teams::requestToJoin($team, $user);
+    $request = Teams::for($team)->joinRequests()->open($user);
 
-    $member = Teams::for($team)->approveJoinRequest($request, User::create());
+    $member = Teams::for($team)->joinRequests()->approve($request, by: User::create());
 
     expect($member->role)->toBe('user');
 });

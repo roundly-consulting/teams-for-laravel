@@ -28,8 +28,6 @@ use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 use RoundlyConsulting\Teams\Roles\DatabaseRoleProvider;
 use RoundlyConsulting\Teams\Roles\InMemoryRoleProvider;
 use RoundlyConsulting\Teams\Roles\PermissionRegistry;
-use RoundlyConsulting\Teams\Roles\Permissions;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
 use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
@@ -101,7 +99,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
         $this->app->singleton(TeamRoleResolver::class);
         $this->app->singleton(PermissionRegistry::class);
 
-        $this->app->singleton('teams', Teams::class);
+        $this->app->singleton(TeamsManager::class);
     }
 
     public function boot(): void
@@ -196,8 +194,8 @@ final class TeamsServiceProvider extends PackageServiceProvider
             'Team role model' => class_basename(TeamRoleModel::class()),
             'Join request model' => class_basename(JoinRequestModel::class()),
             'Role provider' => config('teams.roles.provider') === 'database' ? 'database' : 'array',
-            'Registered roles' => $this->countOf(count(Roles::all()), 'role'),
-            'Registered permissions' => $this->countOf(count(Permissions::all()), 'permission'),
+            'Registered roles' => $this->countOf(count($this->app->make(RoleProvider::class)->all()), 'role'),
+            'Registered permissions' => $this->countOf(count($this->app->make(PermissionRegistry::class)->all()), 'permission'),
             'Role keys' => $this->roleKeys(),
             'Per-team roles' => config('teams.roles.per_team') ? 'ON' : 'OFF',
             'Role cache' => $this->roleCache(),

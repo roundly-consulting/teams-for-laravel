@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
 use RoundlyConsulting\Teams\Support\TeamModel;
 use RoundlyConsulting\Teams\Tests\Fixtures\CustomInvite;
@@ -52,7 +53,7 @@ it('adds and reads members through the configured models', function (): void {
 });
 
 it('issues and accepts invites through the configured models', function (): void {
-    $invite = $this->team->invite(now()->addWeek(), 'user');
+    $invite = $this->team->invite('user', now()->addWeek());
 
     expect($invite)->toBeInstanceOf(CustomInvite::class)
         ->and($this->team->invites()->count())->toBe(1);
@@ -83,13 +84,13 @@ it('opens and approves join requests through the configured models', function ()
     $requester = User::create();
     $responder = User::create();
 
-    $request = app('teams')->requestToJoin($this->team, $requester, 'user');
+    $request = Teams::for($this->team)->joinRequests()->open($requester, 'user');
 
     expect($request)->toBeInstanceOf(CustomJoinRequest::class)
         ->and($this->team->joinRequests()->count())->toBe(1)
         ->and(JoinRequestModel::query()->pending()->count())->toBe(1);
 
-    app('teams')->for($this->team)->approveJoinRequest($request, $responder);
+    Teams::for($this->team)->joinRequests()->approve($request, by: $responder);
 
     expect($this->team->hasMember($requester))->toBeTrue();
 });

@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Roles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Models\TeamRole;
+use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 
 /**
  * Resolves a role key to a Role for a given team, layering optional per-team
@@ -24,7 +25,7 @@ final class TeamRoleResolver
             }
         }
 
-        return Roles::find($key);
+        return app(RoleProvider::class)->find($key);
     }
 
     /**
@@ -35,7 +36,7 @@ final class TeamRoleResolver
      */
     public function all(Team $team): array
     {
-        $roles = Roles::all();
+        $roles = app(RoleProvider::class)->all();
 
         if (! $this->perTeamEnabled()) {
             return $roles;

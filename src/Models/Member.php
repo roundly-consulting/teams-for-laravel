@@ -14,12 +14,12 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Database\Factories\MemberFactory;
-use RoundlyConsulting\Teams\Events\TeamMemberDeleted;
+use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 use RoundlyConsulting\Teams\Roles\Role;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
 use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Support\TeamModel;
+use RoundlyConsulting\Teams\TeamsManager;
 
 /**
  * @property int $id
@@ -97,7 +97,7 @@ class Member extends Model
         // With per-team overrides off, resolve against the global provider
         // directly so no team relation is loaded (zero extra queries).
         if (! config('teams.roles.per_team', false)) {
-            return Roles::find($this->role);
+            return app(RoleProvider::class)->find($this->role);
         }
 
         /** @var Team $team */
@@ -145,11 +145,18 @@ class Member extends Model
             ->whereBetween('expires_at', [now(), now()->addDays($days)]);
     }
 
-    public function removeFromTeam(): void
+    /**
+     * Remove this membership — `Teams::for($team)->members()->remove($member)`.
+     */
+    public function removeFromTeam(): bool
     {
-        if ($this->delete()) {
-            TeamMemberDeleted::dispatch($this);
-        }
+        /** @var Team $team */
+        $team = $this->team;
+
+        /** @var Model $member */
+        $member = $this->member;
+
+        return app(TeamsManager::class)->for($team)->members()->remove($member);
     }
 
     /** @return Builder<Member> */

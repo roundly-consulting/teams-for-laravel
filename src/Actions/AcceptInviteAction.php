@@ -14,10 +14,10 @@ use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 
-final class AcceptInviteAction
+final readonly class AcceptInviteAction
 {
     public function __construct(
-        private readonly AddMemberAction $addMember,
+        private AddMemberAction $addMember,
     ) {}
 
     public function execute(Invite $invite, AcceptInviteData $data): Member

@@ -14,7 +14,7 @@ use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Options\MaxSeats;
 
-final class AddMemberAction
+final readonly class AddMemberAction
 {
     /**
      * Add a member to a team. The operation is idempotent: adding an existing

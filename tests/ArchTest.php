@@ -8,7 +8,7 @@ use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Models\TeamRole;
-use RoundlyConsulting\Teams\Teams;
+use RoundlyConsulting\Teams\TeamsManager;
 use RoundlyConsulting\Testing\Arch\ArchPresets;
 
 /**
@@ -35,9 +35,9 @@ ArchPresets::finalByDefault('RoundlyConsulting\Teams', [
     JoinRequest::class,
     // The base every teams error extends, so a host can catch them uniformly.
     TeamsException::class,
-    // The package extends this itself: Testing\TeamsFake subclasses it to record calls for
-    // Teams::fake(). A real, in-tree extension point rather than an oversight.
-    Teams::class,
+    // The facade root. Testing\TeamsFake subclasses it so Teams::fake() swaps in a subtype
+    // and constructor-injected managers receive the fake. A real, in-tree extension point.
+    TeamsManager::class,
 ]);
 
 /**
@@ -104,6 +104,13 @@ ArchPresets::morphColumnsUseTheSeam(__DIR__.'/../database/migrations');
  * — never widen the allow-list to quiet it (bug #6 is a true positive).
  */
 ArchPresets::runtimeRequireIsWhitelisted(__DIR__.'/../composer.json');
+
+/**
+ * One path: the model convenience methods (`$team->addMember()`, `$invite->revoke()`,
+ * `$membership->removeFromTeam()`, …) and the model traits delegate to TeamsManager, never
+ * straight to an action — so behaviour lives in one place and `Teams::fake()` sees every call.
+ */
+ArchPresets::modelsGoThroughTheFacade('RoundlyConsulting\Teams');
 
 /**
  * Replaces the package's entire previous arch file, which named three functions; the preset

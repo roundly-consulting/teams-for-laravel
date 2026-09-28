@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Commands;
 
 use Illuminate\Console\Command;
-use RoundlyConsulting\Teams\Roles\Roles;
+use RoundlyConsulting\Teams\TeamsManager;
 
 final class ListRolesCommand extends Command
 {
@@ -15,9 +15,9 @@ final class ListRolesCommand extends Command
     /** @var string */
     protected $description = 'List the registered team roles and their permissions';
 
-    public function handle(): int
+    public function handle(TeamsManager $teams): int
     {
-        $roles = Roles::all();
+        $roles = $teams->roles()->all();
 
         if ($roles === []) {
             $this->info('No roles are registered.');

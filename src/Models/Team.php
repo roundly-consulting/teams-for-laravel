@@ -11,28 +11,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Addresses\Traits\HasAddresses;
 use RoundlyConsulting\Connections\Concerns\HasConnections;
 use RoundlyConsulting\Connections\Contracts\Connectable;
 use RoundlyConsulting\Contacts\Concerns\HasContacts;
 use RoundlyConsulting\Options\Traits\HasOptions;
-use RoundlyConsulting\Teams\Actions\AddMemberAction;
-use RoundlyConsulting\Teams\Actions\CreateInviteAction;
-use RoundlyConsulting\Teams\Actions\DefineTeamRoleAction;
-use RoundlyConsulting\Teams\Actions\RemoveMemberAction;
 use RoundlyConsulting\Teams\Database\Factories\TeamFactory;
-use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
-use RoundlyConsulting\Teams\DataTransferObjects\CreateInviteData;
-use RoundlyConsulting\Teams\DataTransferObjects\DefineTeamRoleData;
 use RoundlyConsulting\Teams\Roles\Permission;
 use RoundlyConsulting\Teams\Roles\Role;
-use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
 use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
 use RoundlyConsulting\Teams\Support\MemberModel;
 use RoundlyConsulting\Teams\Support\TeamRoleModel;
+use RoundlyConsulting\Teams\TeamsManager;
 
 /**
  * @property int $id
@@ -44,6 +36,10 @@ use RoundlyConsulting\Teams\Support\TeamRoleModel;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property CarbonInterface|null $deleted_at
+ *
+ * The convenience methods below (`addMember`, `removeMember`, `invite`,
+ * `defineRole`, `roles`) delegate to {@see TeamsManager} — the same code path as
+ * `Teams::for($team)->…`, so `Teams::fake()` records them too.
  *
  * Deliberately not final: `teams.models.team` documents pointing the package at
  * your own subclass, which final would forbid.
@@ -187,19 +183,13 @@ class Team extends Model implements Connectable
      */
     public function roles(): array
     {
-        return app(TeamRoleResolver::class)->all($this);
+        return app(TeamsManager::class)->for($this)->roles()->all();
     }
 
     /** @param list<string|Permission> $permissions */
     public function defineRole(string $key, string $name, array $permissions = [], string $description = ''): TeamRole
     {
-        return app(DefineTeamRoleAction::class)->execute(new DefineTeamRoleData(
-            teamId: (int) $this->getKey(),
-            key: $key,
-            name: $name,
-            permissions: $permissions,
-            description: $description,
-        ));
+        return app(TeamsManager::class)->for($this)->roles()->define($key, $name, $permissions, $description);
     }
 
     public function findMember(Model $member): ?Member
@@ -213,29 +203,25 @@ class Team extends Model implements Connectable
     }
 
     /** @param array<string, mixed> $meta */
-    public function invite(Carbon $expiresAt, string $role, array $meta = [], ?int $maxUses = 1): Invite
-    {
-        return app(CreateInviteAction::class)->execute($this, new CreateInviteData(
-            role: $role,
-            expiresAt: $expiresAt,
-            meta: $meta,
-            maxUses: $maxUses,
-        ));
+    public function invite(
+        string $role,
+        ?CarbonInterface $expiresAt = null,
+        ?string $email = null,
+        ?Model $invitedBy = null,
+        array $meta = [],
+        ?int $maxUses = 1,
+    ): Invite {
+        return app(TeamsManager::class)->for($this)->invites()->create($role, $expiresAt, $email, $invitedBy, $meta, $maxUses);
     }
 
     /** @param array<string, mixed> $meta */
     public function addMember(Model $member, string $role, array $meta = [], ?CarbonInterface $expiresAt = null): Member
     {
-        return app(AddMemberAction::class)->execute($this, new AddMemberData(
-            member: $member,
-            role: $role,
-            meta: $meta,
-            expiresAt: $expiresAt,
-        ));
+        return app(TeamsManager::class)->for($this)->members()->add($member, $role, $meta, $expiresAt);
     }
 
     public function removeMember(Model $member): bool
     {
-        return app(RemoveMemberAction::class)->execute($this, $member);
+        return app(TeamsManager::class)->for($this)->members()->remove($member);
     }
 }

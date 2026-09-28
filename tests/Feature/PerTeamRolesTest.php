@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Tests\User;
 
 beforeEach(function (): void {
     config()->set('teams.roles.per_team', true);
-    Roles::register('editor', 'Editor', ['posts.edit']);
+    Teams::roles()->register('editor', 'Editor', ['posts.edit']);
 });
 
 it('gives a team-specific permission only to that team', function (): void {

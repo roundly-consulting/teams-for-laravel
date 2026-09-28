@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Tests\User;
 
-beforeEach(fn () => Roles::register('manager', 'Manager', ['manage-billing']));
+beforeEach(fn () => Teams::roles()->register('manager', 'Manager', ['manage-billing']));
 
 it('reports expiry only when expires_at is in the past', function (): void {
     expect((new Member)->isExpired())->toBeFalse()

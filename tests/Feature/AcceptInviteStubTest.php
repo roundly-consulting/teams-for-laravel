@@ -22,7 +22,7 @@ it('accepts an invite through a route bound on its code', function (): void {
     Invite::factory()->for($team)->create(['code' => 'route-code', 'role' => 'admin']);
 
     Route::get('teams/invites/{code}', function (string $code) use ($user): string {
-        Teams::acceptInviteByCode($code, $user);
+        Teams::invites()->accept($code, $user);
 
         return 'accepted';
     });

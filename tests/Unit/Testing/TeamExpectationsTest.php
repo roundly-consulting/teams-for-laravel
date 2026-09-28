@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\AssertionFailedError;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Testing\TeamExpectations;
 use RoundlyConsulting\Teams\Tests\User;
 
 beforeEach(function (): void {
-    Roles::register('editor', 'Editor', ['posts.publish']);
+    Teams::roles()->register('editor', 'Editor', ['posts.publish']);
     TeamExpectations::register();
 });
 

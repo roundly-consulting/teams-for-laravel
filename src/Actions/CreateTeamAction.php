@@ -10,10 +10,10 @@ use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Support\TeamModel;
 
-final class CreateTeamAction
+final readonly class CreateTeamAction
 {
     public function __construct(
-        private readonly AddMemberAction $addMember,
+        private AddMemberAction $addMember,
     ) {}
 
     public function execute(CreateTeamData $data): Team

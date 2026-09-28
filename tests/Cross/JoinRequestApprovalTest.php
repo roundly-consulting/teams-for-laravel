@@ -25,8 +25,8 @@ it('opens an approval request and leaves the join request pending', function ():
     $user = User::create();
 
     $request = Teams::for($team)
-        ->requireApprovalFrom($admin)
-        ->requestToJoinFor($user);
+        ->joinRequests()->requireApprovalFrom($admin)
+        ->open($user);
 
     expect($request->status)->toBe(JoinRequestStatus::Pending)
         ->and($request->approvalRequests()->count())->toBe(1)
@@ -37,7 +37,7 @@ it('adds the member and marks approved when the engine approves', function (): v
     $team = Team::factory()->create();
     $admin = User::create();
     $user = User::create();
-    $request = Teams::for($team)->requireApprovalFrom($admin)->requestToJoinFor($user);
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
 
     $captured = [];
     Event::listen(JoinRequestApproved::class, function (JoinRequestApproved $e) use (&$captured): void {
@@ -55,7 +55,7 @@ it('marks denied and dispatches the denied event when the engine rejects', funct
     $team = Team::factory()->create();
     $admin = User::create();
     $user = User::create();
-    $request = Teams::for($team)->requireApprovalFrom($admin)->requestToJoinFor($user);
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
 
     $captured = [];
     Event::listen(JoinRequestDenied::class, function (JoinRequestDenied $e) use (&$captured): void {
@@ -76,10 +76,10 @@ it('holds pending until a quorum is reached', function (): void {
     $user = User::create();
 
     $request = Teams::for($team)
-        ->requireApprovalFrom([$a, $b])
+        ->joinRequests()->requireApprovalFrom([$a, $b])
         ->rule(ApprovalRule::Quorum)
         ->quorum(2)
-        ->requestToJoinFor($user);
+        ->open($user);
 
     Approvals::for($request)->as($a)->approve();
     expect($request->fresh()?->status)->toBe(JoinRequestStatus::Pending);
@@ -92,7 +92,7 @@ it('is idempotent on a double resolution', function (): void {
     $team = Team::factory()->create();
     $admin = User::create();
     $user = User::create();
-    $request = Teams::for($team)->requireApprovalFrom($admin)->requestToJoinFor($user);
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
 
     Approvals::for($request)->as($admin)->approve();
     Approvals::for($request)->as($admin)->approve();
@@ -105,7 +105,7 @@ it('records the deciding admin as the responder', function (): void {
     $team = Team::factory()->create();
     $admin = User::create();
     $user = User::create();
-    $request = Teams::for($team)->requireApprovalFrom($admin)->requestToJoinFor($user);
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
 
     Approvals::for($request)->as($admin)->approve();
 
@@ -133,7 +133,7 @@ it('is a no-op for a cancelled or expired approval', function (): void {
     $team = Team::factory()->create();
     $admin = User::create();
     $user = User::create();
-    $request = Teams::for($team)->requireApprovalFrom($admin)->requestToJoinFor($user);
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
 
     $approvalRequest = $request->approvalRequests()->first();
     $approvalRequest->status = ApprovalStatus::Cancelled;
@@ -151,15 +151,15 @@ it('does not sync while approvals are disabled', function (): void {
     $admin = User::create();
     $user = User::create();
 
-    // With the flag off the builder never opens an approval request; the
+    // With the flag off the handle never opens an approval request; the
     // request stays on the native single-responder path.
-    $request = Teams::for($team)->requireApprovalFrom($admin)->requestToJoinFor($user);
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
 
     expect($request->approvalRequests()->count())->toBe(0)
         ->and($request->status)->toBe(JoinRequestStatus::Pending);
 
     // The native path still resolves it.
-    Teams::for($team)->approveJoinRequest($request, $admin);
+    Teams::for($team)->joinRequests()->approve($request, by: $admin);
 
     expect($request->fresh()?->status)->toBe(JoinRequestStatus::Approved)
         ->and($team->hasMember($user))->toBeTrue();
@@ -172,11 +172,39 @@ it('keeps the native single-responder approve path working alongside approvals',
 
     // A plain request with no approvers uses the native path even when the
     // feature flag is enabled.
-    $request = Teams::requestToJoin($team, $user);
+    $request = Teams::for($team)->joinRequests()->open($user);
 
-    Teams::for($team)->approveJoinRequest($request, $responder);
+    Teams::for($team)->joinRequests()->approve($request, by: $responder);
 
     expect($request->fresh()?->status)->toBe(JoinRequestStatus::Approved)
         ->and($team->hasMember($user))->toBeTrue()
         ->and($request->approvalRequests()->count())->toBe(0);
+});
+
+it('does not open a second approval request when the requester asks again', function (): void {
+    $team = Team::factory()->create();
+    $admin = User::create();
+    $user = User::create();
+    $staged = Teams::for($team)->joinRequests()->requireApprovalFrom($admin);
+
+    $first = $staged->open($user);
+    $again = $staged->open($user);
+
+    expect($again->is($first))->toBeTrue()
+        ->and($first->approvalRequests()->count())->toBe(1);
+});
+
+it('uses the configured rule and quorum when the handle sets none', function (): void {
+    config()->set('teams.approvals.rule', 'quorum');
+    config()->set('teams.approvals.quorum', 2);
+
+    $team = Team::factory()->create();
+    $a = User::create();
+    $b = User::create();
+    $user = User::create();
+
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom(collect([$a, $b]))->open($user);
+
+    expect($request->approvalRequests()->first()?->rule)->toBe(ApprovalRule::Quorum)
+        ->and($request->approvalRequests()->first()?->required_approvers)->toBe(2);
 });

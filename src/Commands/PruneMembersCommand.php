@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Commands;
 
 use Illuminate\Console\Command;
-use RoundlyConsulting\Teams\Actions\PruneExpiredMembersAction;
+use RoundlyConsulting\Teams\TeamsManager;
 
 final class PruneMembersCommand extends Command
 {
@@ -15,9 +15,9 @@ final class PruneMembersCommand extends Command
     /** @var string */
     protected $description = 'Delete members whose membership expired beyond the configured retention window';
 
-    public function handle(PruneExpiredMembersAction $action): int
+    public function handle(TeamsManager $teams): int
     {
-        $pruned = $action->execute();
+        $pruned = $teams->members()->prune();
 
         $this->info("Pruned {$pruned} expired member(s).");
 

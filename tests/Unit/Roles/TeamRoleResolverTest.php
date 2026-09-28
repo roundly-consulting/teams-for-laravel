@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Roles\Role;
-use RoundlyConsulting\Teams\Roles\Roles;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
 
 beforeEach(function (): void {
-    Roles::register('editor', 'Editor', ['posts.edit']);
+    Teams::roles()->register('editor', 'Editor', ['posts.edit']);
 });
 
 it('falls back to the global role when no override exists', function (): void {

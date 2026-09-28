@@ -75,13 +75,14 @@ it('connects a team to a user', function (): void {
         ->and($team->hasPermissionThroughConnection($user, 'delegate:admin'))->toBeTrue();
 });
 
-it('connects and disconnects fluently through the team builder', function (): void {
+it('delegates to the connections package through the team handle', function (): void {
     $team = Team::factory()->create();
     $partner = Team::factory()->create();
 
-    Teams::for($team)->connectTo($partner, ['share:roster']);
-    expect($team->isConnectedTo($partner))->toBeTrue();
+    Teams::for($team)->connections()->to($partner)->withPermissions('share:roster')->connect();
+    expect($team->isConnectedTo($partner))->toBeTrue()
+        ->and($team->hasPermissionThroughConnection($partner, 'share:roster'))->toBeTrue();
 
-    Teams::for($team)->disconnectFrom($partner);
+    Teams::for($team)->connections()->to($partner)->disconnect();
     expect($team->isConnectedTo($partner))->toBeFalse();
 });

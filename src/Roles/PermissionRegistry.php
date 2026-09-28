@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Roles;
 
+use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
+
 /**
  * In-memory registry of developer-defined permissions. Permissions are code
  * constants (not tenant data), so there is no database driver.
@@ -68,7 +70,7 @@ final class PermissionRegistry
     {
         $harvested = $this->permissions;
 
-        foreach (Roles::all() as $role) {
+        foreach (app(RoleProvider::class)->all() as $role) {
             foreach ($role->permissionObjects as $permission) {
                 $harvested[$permission->key] ??= $permission;
             }

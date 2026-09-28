@@ -15,11 +15,11 @@ it('runs a request-to-approve flow end to end', function (): void {
     $user = User::create();
     $admin = User::create();
 
-    $request = Teams::requestToJoin($team, $user, requestedRole: 'admin', message: 'Hi');
+    $request = Teams::for($team)->joinRequests()->open($user, requestedRole: 'admin', message: 'Hi');
 
     expect($request->status)->toBe(JoinRequestStatus::Pending);
 
-    $member = Teams::for($team)->approveJoinRequest($request, $admin);
+    $member = Teams::for($team)->joinRequests()->approve($request, by: $admin);
 
     expect($member->role)->toBe('admin')
         ->and($team->hasMember($user))->toBeTrue()
@@ -31,9 +31,9 @@ it('runs a request-to-deny flow end to end', function (): void {
     $user = User::create();
     $admin = User::create();
 
-    $request = Teams::requestToJoin($team, $user);
+    $request = Teams::for($team)->joinRequests()->open($user);
 
-    Teams::for($team)->denyJoinRequest($request, $admin);
+    Teams::for($team)->joinRequests()->deny($request, by: $admin);
 
     expect($request->fresh()?->status)->toBe(JoinRequestStatus::Denied)
         ->and($team->hasMember($user))->toBeFalse();
@@ -41,7 +41,7 @@ it('runs a request-to-deny flow end to end', function (): void {
 
 it('exposes pending requests on the team relation', function (): void {
     $team = Team::factory()->create();
-    Teams::requestToJoin($team, User::create());
+    Teams::for($team)->joinRequests()->open(User::create());
 
     expect($team->joinRequests()->pending()->count())->toBe(1);
 });
@@ -52,7 +52,7 @@ it('expires a request with a past expiry on prune, firing the event', function (
     $team = Team::factory()->create();
     $user = User::create();
 
-    $request = Teams::requestToJoin($team, $user, expiresAt: now()->subDay());
+    $request = Teams::for($team)->joinRequests()->open($user, expiresAt: now()->subDay());
 
     expect($request->status)->toBe(JoinRequestStatus::Pending);
 

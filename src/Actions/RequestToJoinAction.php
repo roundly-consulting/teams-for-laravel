@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Actions;
 
 use Illuminate\Support\Collection;
+use RoundlyConsulting\Approvals\Enums\ApprovalRule;
+use RoundlyConsulting\Approvals\Facades\Approvals;
 use RoundlyConsulting\Options\Facades\Options;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\RequestToJoinData;
@@ -18,10 +20,10 @@ use RoundlyConsulting\Teams\Options\DefaultMemberRole;
 use RoundlyConsulting\Teams\Options\JoinPolicy as JoinPolicyOption;
 use RoundlyConsulting\Teams\Options\RequireApprovalToJoin;
 
-final class RequestToJoinAction
+final readonly class RequestToJoinAction
 {
     public function __construct(
-        private readonly AddMemberAction $addMember,
+        private AddMemberAction $addMember,
     ) {}
 
     /**
@@ -29,6 +31,10 @@ final class RequestToJoinAction
      * an invite-only team rejects the request, and an open team without a
      * require-approval switch auto-approves it. Idempotent: an existing pending
      * request for the (team, requester) pair is returned unchanged.
+     *
+     * When approvers are staged and teams.approvals.enabled is on, a request left
+     * pending is routed through the approvals engine; the
+     * SyncJoinRequestStatusFromApproval listener mirrors the decision back.
      */
     public function execute(RequestToJoinData $data): JoinRequest
     {
@@ -65,7 +71,35 @@ final class RequestToJoinAction
             $this->autoApprove($request, $data);
         }
 
+        if ($this->routesThroughApprovals($data) && $request->isPending()) {
+            Approvals::request($request)
+                ->from($data->approvers)
+                ->rule($data->approvalRule ?? $this->configuredRule(), $data->approvalQuorum ?? $this->configuredQuorum())
+                ->open();
+        }
+
         return $request;
+    }
+
+    private function routesThroughApprovals(RequestToJoinData $data): bool
+    {
+        return $data->approvers !== [] && (bool) config('teams.approvals.enabled', false);
+    }
+
+    private function configuredRule(): ApprovalRule
+    {
+        /** @var string $rule */
+        $rule = config('teams.approvals.rule', 'unanimous');
+
+        return ApprovalRule::tryFrom($rule) ?? ApprovalRule::Unanimous;
+    }
+
+    private function configuredQuorum(): ?int
+    {
+        /** @var int|null $quorum */
+        $quorum = config('teams.approvals.quorum');
+
+        return $quorum;
     }
 
     private function requiresApproval(RequestToJoinData $data): bool

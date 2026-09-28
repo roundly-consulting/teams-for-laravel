@@ -44,7 +44,7 @@ it('accepts invite and adds member to team', function () {
     $team = Team::factory()->create();
     $user = User::create();
 
-    $invite = $team->invite(now()->addDay(), 'admin');
+    $invite = $team->invite('admin', now()->addDay());
 
     expect($team->hasMember($user))->toBeFalse();
 

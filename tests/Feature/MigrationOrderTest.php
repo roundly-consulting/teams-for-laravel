@@ -114,7 +114,7 @@ it('round-trips a team and its membership on the configured engine', function ()
     $owner = User::query()->create();
     $member = User::query()->create();
 
-    $team = Teams::createTeam(new CreateTeamData(
+    $team = Teams::create(new CreateTeamData(
         name: 'Acme',
         owner: $owner,
         meta: ['tier' => 2, 'region' => 'eu'],

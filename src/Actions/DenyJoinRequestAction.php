@@ -9,7 +9,7 @@ use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Events\JoinRequestDenied;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 
-final class DenyJoinRequestAction
+final readonly class DenyJoinRequestAction
 {
     /**
      * Deny a pending join request. A non-pending request is returned unchanged

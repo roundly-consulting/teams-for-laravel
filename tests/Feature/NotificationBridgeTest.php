@@ -71,7 +71,7 @@ it('notifies an invited email when an invite is created', function (): void {
     $team = Team::factory()->create();
     Team::factory()->create();
 
-    $team->invite(now()->addWeek(), 'admin');
+    $team->invite('admin', now()->addWeek());
     $invite = $team->invites()->create([
         'code' => 'with-email',
         'role' => 'admin',

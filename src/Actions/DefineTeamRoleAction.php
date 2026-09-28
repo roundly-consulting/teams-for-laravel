@@ -9,7 +9,7 @@ use RoundlyConsulting\Teams\Models\TeamRole;
 use RoundlyConsulting\Teams\Roles\Permission;
 use RoundlyConsulting\Teams\Support\TeamRoleModel;
 
-final class DefineTeamRoleAction
+final readonly class DefineTeamRoleAction
 {
     /**
      * Upsert a per-team role override. Idempotent on (team_id, key).

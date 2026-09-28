@@ -4,23 +4,33 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Actions;
 
+use Illuminate\Database\Eloquent\Model;
 use RoundlyConsulting\Teams\Events\TeamMemberRoleChanged;
+use RoundlyConsulting\Teams\Exceptions\MemberNotFoundException;
 use RoundlyConsulting\Teams\Models\Member;
+use RoundlyConsulting\Teams\Models\Team;
 
-final class ChangeMemberRoleAction
+final readonly class ChangeMemberRoleAction
 {
-    public function execute(Member $member, string $role): Member
+    /**
+     * Change a member's role, firing TeamMemberRoleChanged when it actually changes.
+     *
+     * @throws MemberNotFoundException when the model is not a member of the team
+     */
+    public function execute(Team $team, Model $member, string $role): Member
     {
-        $previousRole = $member->role;
+        $membership = $team->findMember($member) ?? throw MemberNotFoundException::inTeam($team);
+
+        $previousRole = $membership->role;
 
         if ($previousRole === $role) {
-            return $member;
+            return $membership;
         }
 
-        $member->update(['role' => $role]);
+        $membership->update(['role' => $role]);
 
-        TeamMemberRoleChanged::dispatch($member, $previousRole);
+        TeamMemberRoleChanged::dispatch($membership, $previousRole);
 
-        return $member;
+        return $membership;
     }
 }

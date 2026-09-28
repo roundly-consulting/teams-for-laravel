@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Commands;
 
 use Illuminate\Console\Command;
-use RoundlyConsulting\Teams\Actions\DispatchExpiringMembershipsAction;
 use RoundlyConsulting\Teams\Models\Member;
+use RoundlyConsulting\Teams\TeamsManager;
 
 final class MembersExpiringCommand extends Command
 {
@@ -18,12 +18,14 @@ final class MembersExpiringCommand extends Command
     /** @var string */
     protected $description = 'Report memberships expiring within the configured window';
 
-    public function handle(DispatchExpiringMembershipsAction $action): int
+    public function handle(TeamsManager $teams): int
     {
         $days = $this->resolveDays();
         $notify = (bool) $this->option('notify');
 
-        $members = $action->execute($days, notify: $notify);
+        $members = $notify
+            ? $teams->members()->notifyExpiring($days)
+            : $teams->members()->expiring($days);
 
         if ($members->isEmpty()) {
             $this->info("No memberships are expiring within {$days} day(s).");

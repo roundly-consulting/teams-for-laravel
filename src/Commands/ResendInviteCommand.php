@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Commands;
 
 use Illuminate\Console\Command;
-use RoundlyConsulting\Teams\Actions\ResendInviteAction;
-use RoundlyConsulting\Teams\Models\Invite;
-use RoundlyConsulting\Teams\Support\InviteModel;
+use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\TeamsManager;
 
 final class ResendInviteCommand extends Command
 {
@@ -17,21 +16,23 @@ final class ResendInviteCommand extends Command
     /** @var string */
     protected $description = 'Resend an invite, rotating its code and extending its expiry';
 
-    public function handle(ResendInviteAction $action): int
+    public function handle(TeamsManager $teams): int
     {
         /** @var string $code */
         $code = $this->argument('code');
 
-        /** @var Invite|null $invite */
-        $invite = InviteModel::query()->where('code', $code)->first();
+        $invite = $teams->invites()->find($code);
 
-        if ($invite === null) {
+        /** @var Team|null $team */
+        $team = $invite?->team;
+
+        if ($invite === null || $team === null) {
             $this->error("No invite found for code \"{$code}\".");
 
             return self::FAILURE;
         }
 
-        $invite = $action->execute($invite);
+        $invite = $teams->for($team)->invites()->resend($invite);
 
         $this->info("Invite resent. New code: {$invite->code}");
 

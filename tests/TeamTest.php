@@ -156,7 +156,7 @@ it('creates invite with random code', function () {
 
     Str::createRandomStringsUsing(fn () => 'RandomCode');
 
-    $invite = $team->invite($expiresAt, 'user', [
+    $invite = $team->invite('user', $expiresAt, meta: [
         'foo' => 'bar',
     ]);
 

@@ -23,8 +23,8 @@ Associate users with teams, roles, permissions, and invitations in Laravel.
 
 This package gives any Eloquent model the ability to own and join teams. Members carry a
 role, roles carry permissions, and teams can issue expiring, email-targeted invites. A
-discoverable `Teams` facade and fluent builder express the common operations in a single
-line, business logic lives in testable action classes, and roles can be defined in code or
+discoverable `Teams` facade with team-scoped handles expresses the common operations in a
+single line, business logic lives in testable action classes, and roles can be defined in code or
 stored in the database. Teams, members, and invites are soft-deletable, and expired invites
 are automatically prunable.
 
@@ -168,44 +168,92 @@ The package works with zero configuration.
 
 ## Usage
 
-### The `Teams` facade and fluent builder
+### The `Teams` facade
 
-The `Teams` facade is the discoverable entry point. It delegates to the package's action
-classes, which you can also resolve and call directly.
+`Teams` is the entry point for everything the package does. Team-scoped work hangs off
+`Teams::for($team)`, which returns a handle with one sub-accessor per area; cross-team work
+(accepting an invite by code, housekeeping, the role and permission vocabulary) sits on the
+facade itself.
 
 ```php
-use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
+use RoundlyConsulting\Teams\Facades\Teams;
 
-// Create a team, optionally wiring in its owner as a member with the owner role.
-$team = Teams::createTeam(new CreateTeamData(name: 'Acme', owner: $owner));
+// Create a team; the owner joins with the configured owner role.
+$team = Teams::create(new CreateTeamData(name: 'Acme', owner: $owner));
 
-// Chain member and invite operations.
-Teams::for($team)
-    ->addMember($alice, 'admin')
-    ->addMember($bob, 'user')
-    ->changeRole($bob, 'admin')
-    ->transferOwnershipTo($alice);
+// Members
+Teams::for($team)->members()->add($alice, 'admin', expiresAt: now()->addYear());
+Teams::for($team)->members()->changeRole($alice, 'editor');   // throws MemberNotFoundException for a non-member
+Teams::for($team)->members()->remove($bob);                   // bool
+Teams::for($team)->members()->all();                          // Collection<Member>
+Teams::for($team)->members()->has($alice);                    // bool
+Teams::for($team)->members()->find($alice);                   // ?Member
 
-$invite = Teams::for($team)->invite(role: 'admin', email: 'jane@acme.test');
+// Invites
+$invite = Teams::for($team)->invites()->create(role: 'member', email: 'jane@acme.test', maxUses: 1);
+Teams::for($team)->invites()->resend($invite);   // rotate code, extend expiry
+Teams::for($team)->invites()->revoke($invite);   // bool
+Teams::for($team)->invites()->pending();         // Collection<Invite>
+Teams::invites()->accept($invite, $user);        // or accept('the-code', $user, email: $user->email)
 
-Teams::role('admin');  // ?Role
-Teams::roles();        // array<string, Role>
+// Join requests
+$request = Teams::for($team)->joinRequests()->open($user, requestedRole: 'member', message: 'Hi');
+Teams::for($team)->joinRequests()->approve($request, by: $admin, role: 'member');
+Teams::for($team)->joinRequests()->deny($request, by: $admin);
+Teams::for($team)->joinRequests()->pending();    // Collection<JoinRequest>
+
+// Per-team roles, ownership, settings and the companion packages
+Teams::for($team)->roles()->define('editor', 'Editor', ['posts.edit']);
+Teams::for($team)->roles()->all();               // effective role map
+Teams::for($team)->transferOwnershipTo($alice);  // Team
+Teams::for($team)->settings();                   // TeamSettings (options package)
+Teams::for($team)->contacts();                   // ContactBook (contacts package)
+Teams::for($team)->addresses();                  // AddressBook (addresses package)
+Teams::for($team)->connections();                // PendingConnection (connections package)
+
+// Global vocabulary and housekeeping
+Teams::roles()->register('admin', 'Admin', ['*']);
+Teams::permissions()->register('posts.publish', 'Publish posts', group: 'Content');
+Teams::invites()->prune();                       // int
+Teams::members()->expiring(days: 7);             // Collection<Member>, read-only
+Teams::members()->notifyExpiring(days: 7);       // fires MembershipExpiringSoon
+Teams::members()->prune();                       // int
+Teams::joinRequests()->expire();                 // int — auto-decline expired pending requests
 ```
 
-The builder methods are chainable (`addMember`, `removeMember`, `changeRole`,
-`transferOwnershipTo`) except `invite()` which returns the created `Invite`, and `team()`
-which returns the underlying `Team`.
+**Scoping is a security boundary.** A handle from `Teams::for($teamA)` refuses rows that
+belong to another team: `invites()->resend()/revoke()` throw `InviteNotFoundException`,
+`joinRequests()->approve()/deny()` throw `JoinRequestNotFoundException`, and
+`members()->changeRole()` throws `MemberNotFoundException`. So a controller can take the team
+from the route and the invite or request from user input without an extra ownership check.
 
-### Action classes & DTOs
+The model convenience methods run through the same code: `$team->addMember()`,
+`$team->removeMember()`, `$team->invite()`, `$team->defineRole()`, `$invite->acceptBy()`,
+`$invite->resend()`, `$invite->revoke()` and `$membership->removeFromTeam()` all delegate to
+the manager.
 
-Every operation is also a single-`execute` action that accepts a DTO. Resolve them from the
-container:
+### Without the facade
+
+The facade is sugar over `RoundlyConsulting\Teams\TeamsManager`. Inject it for the same API,
+or call an action directly:
 
 ```php
 use RoundlyConsulting\Teams\Actions\CreateInviteAction;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateInviteData;
+use RoundlyConsulting\Teams\TeamsManager;
 
+final class InviteController
+{
+    public function __construct(private TeamsManager $teams) {}
+
+    public function store(Team $team): Invite
+    {
+        return $this->teams->for($team)->invites()->create(role: 'member');
+    }
+}
+
+// The raw action — the behaviour the manager and facade both run.
 $invite = app(CreateInviteAction::class)->execute($team, new CreateInviteData(
     role: 'admin',
     email: 'jane@acme.test',
@@ -213,13 +261,13 @@ $invite = app(CreateInviteAction::class)->execute($team, new CreateInviteData(
 ));
 ```
 
-Available actions: `CreateTeamAction`, `AddMemberAction`, `RemoveMemberAction`,
-`ChangeMemberRoleAction`, `CreateInviteAction`, `AcceptInviteAction`, `ResendInviteAction`,
-`RevokeInviteAction`, `TransferOwnershipAction`, `PruneInvitesAction`,
-`PruneExpiredMembersAction`, `DispatchExpiringMembershipsAction`, `DefineTeamRoleAction`,
-`RequestToJoinAction`, `ApproveJoinRequestAction`, `DenyJoinRequestAction`,
-`ExpireJoinRequestsAction`. Their DTOs live in
-`RoundlyConsulting\Teams\DataTransferObjects`.
+Actions: `CreateTeamAction`, `AddMemberAction`, `RemoveMemberAction`, `ChangeMemberRoleAction`,
+`CreateInviteAction`, `AcceptInviteAction`, `ResendInviteAction`, `RevokeInviteAction`,
+`TransferOwnershipAction`, `DefineTeamRoleAction`, `RequestToJoinAction`,
+`ApproveJoinRequestAction`, `DenyJoinRequestAction`, `PruneInvitesAction`,
+`PruneExpiredMembersAction`, `DispatchExpiringMembershipsAction`, `ExpireJoinRequestsAction`.
+Their DTOs live in `RoundlyConsulting\Teams\DataTransferObjects`. Calling an action directly
+skips the team-scope checks and `Teams::fake()` — prefer the manager in application code.
 
 ### Defining team roles
 
@@ -228,26 +276,28 @@ optional permissions (strings or `Permission` value objects), and an optional de
 The `*` permission grants everything.
 
 ```php
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Roles\Permission;
-use RoundlyConsulting\Teams\Roles\Roles;
 
-Roles::register('admin', 'Admin', ['*']);
-Roles::register('editor', 'Editor', ['edit', new Permission('publish', 'Publish posts')])
+Teams::roles()->register('admin', 'Admin', ['*']);
+Teams::roles()->register('editor', 'Editor', ['edit', new Permission('publish', 'Publish posts')])
     ->description('Can edit and publish content.');
-Roles::register('user', 'User');
+Teams::roles()->register('user', 'User');
 
-Roles::all();          // array<string, Role>
-Roles::find('admin');  // ?Role
+Teams::roles()->all();          // array<string, Role>
+Teams::roles()->find('admin');  // ?Role
 ```
+
+`Teams::roles()` returns the configured `RoleProvider` (`register`, `find`, `all`).
 
 #### Storing roles in the database
 
-Set `roles.provider` to `database` and the same `Roles::*` API persists roles to the
+Set `roles.provider` to `database` and the same `Teams::roles()` API persists roles to the
 `team_roles` table, so admins can manage them at runtime. Permission checks are unchanged.
 
 ```php
 // config/teams.php → 'roles' => ['provider' => 'database', ...]
-Roles::register('editor', 'Editor', ['edit', 'publish']); // upserts a RoleDefinition row
+Teams::roles()->register('editor', 'Editor', ['edit', 'publish']); // upserts a RoleDefinition row
 ```
 
 #### Per-team role overrides
@@ -258,19 +308,20 @@ role. With the flag off, resolution is identical to before and issues no extra q
 
 ```php
 // config/teams.php → 'roles' => ['per_team' => true, ...]
-Roles::register('editor', 'Editor', ['posts.edit']);          // global baseline
+Teams::roles()->register('editor', 'Editor', ['posts.edit']);          // global baseline
 
-Teams::for($team)->defineRole('editor', 'Editor', ['posts.edit', 'posts.publish']);
+Teams::for($team)->roles()->define('editor', 'Editor', ['posts.edit', 'posts.publish']);
 
-$user->can('teams.posts.publish', $team); // true for THIS team only
-$team->roles();                           // effective role map (global merged with overrides)
+$user->can('teams.posts.publish', $team);   // true for THIS team only
+Teams::for($team)->roles()->all();          // effective role map (global merged with overrides)
+Teams::for($team)->roles()->find('editor'); // ?Role — the override when one exists
 ```
 
 #### Caching the database provider
 
 When using the `database` provider, set `roles.cache.enabled` to cache the role map and flush
-it automatically on every `Roles::register(...)`. Tag-aware stores are flushed by tag; other
-stores fall back to a single key forget. Off by default.
+it automatically on every `Teams::roles()->register(...)`. Tag-aware stores are flushed by tag;
+other stores fall back to a single key forget. Off by default.
 
 ### Enumerating permissions
 
@@ -279,18 +330,18 @@ permission-picker UI — independently of which roles use them. Permissions are 
 code constants (no database driver).
 
 ```php
-use RoundlyConsulting\Teams\Roles\Permissions;
+Teams::permissions()->register('posts.publish', 'Publish posts', group: 'Content');
+Teams::permissions()->group('Content', ['posts.edit', 'posts.delete']);
 
-Permissions::register('posts.publish', 'Publish posts', group: 'Content');
-Permissions::group('Content', ['posts.edit', 'posts.delete']);
-
-Permissions::all();        // array<string, Permission>
-Permissions::find('posts.publish');
-Permissions::fromRoles();  // harvest distinct permissions declared on registered roles
-Teams::permissions();      // same map, via the facade
+Teams::permissions()->all();        // array<string, Permission>
+Teams::permissions()->find('posts.publish');
+Teams::permissions()->fromRoles();  // also harvest permissions declared on registered roles
 ```
 
 ### Creating teams
+
+Prefer `Teams::create(new CreateTeamData(...))` (it seats the owner and is recorded by
+`Teams::fake()`). The model can also be created directly:
 
 ```php
 use RoundlyConsulting\Teams\Models\Team;
@@ -336,8 +387,10 @@ $user->ownsTeam($team);             // via the HasTeams trait
 ```php
 use Illuminate\Database\Eloquent\Model;
 
+// Same as Teams::for($team)->members()->add(...) / ->remove(...)
 $team->addMember(Model $member, string $role, array $meta = [], ?CarbonInterface $expiresAt = null): Member;
 $team->removeMember(Model $member): bool; // soft-deletes the membership
+$membership->removeFromTeam(): bool;      // from the Member row
 
 $team->findMember(Model $member): ?Member;
 $team->hasMember(Model $member): bool;
@@ -364,35 +417,42 @@ Member::query()->expired();
 
 // Force-delete members expired beyond config('teams.members.prune_after'), firing
 // MembershipExpired per row (also collected by `php artisan model:prune`).
-php artisan teams:members:prune
+Teams::members()->prune();   // or: php artisan teams:members:prune
 ```
 
 ### Invitations
 
 A team can issue an expiring, optionally email-targeted invite. Invites use soft deletes and
 the `Prunable` trait, so invites that expired over a month ago are removed by
-`php artisan model:prune` (or `php artisan teams:invites:prune`). Invites resolve by their
-`code` for route-model binding.
+`php artisan model:prune` (or `Teams::invites()->prune()` / `php artisan teams:invites:prune`).
+Invites resolve by their `code` for route-model binding.
 
 ```php
 // Default expiry from config; target a specific email.
-$invite = Teams::for($team)->invite(role: 'admin', email: 'jane@acme.test');
+$invite = Teams::for($team)->invites()->create(role: 'admin', email: 'jane@acme.test');
 
 // Multi-seat link: usable up to N times (null = unlimited). Defaults to 1 (single use).
-$invite = Teams::for($team)->invite(role: 'member', maxUses: 5);
+$invite = Teams::for($team)->invites()->create(role: 'member', maxUses: 5);
+
+// The model shortcut takes the same parameters in the same order (role first).
+$invite = $team->invite('member', now()->addDays(3), email: 'jane@acme.test');
 
 $invite->isExpired(): bool;
 $invite->isExhausted(): bool;             // reached its usage limit
+
+Teams::for($team)->invites()->resend($invite); // rotate the code and extend expiry → Invite
+Teams::for($team)->invites()->revoke($invite); // bool
+Teams::for($team)->invites()->pending();       // the team's unexpired invites
+
+// Accept by model or by code (the code is resolved for you).
+Teams::invites()->accept($invite, $user, email: $user->email);
+Teams::invites()->accept($code, $user);
+Teams::invites()->find($code);            // ?Invite
+
+// Model shortcuts, same code path:
 $invite->acceptBy(Model $member, ?string $email = null): Member;
-$invite->resend(): Invite;                // rotate the code and extend expiry
+$invite->resend(): Invite;
 $invite->revoke(): bool;
-
-// The same resend/revoke operations are also callable from the team builder.
-Teams::for($team)->resendInvite($invite); // returns the refreshed Invite
-Teams::for($team)->revokeInvite($invite); // returns bool
-
-// Accept in one call by code (resolves the invite for you).
-Teams::acceptInviteByCode($code, $user);
 
 Invite::query()->pending();               // not yet expired
 Invite::query()->forEmail('jane@acme.test');
@@ -402,7 +462,7 @@ Multi-use ("seat pool") invites record which members joined through them, so you
 seat ledger and audit who consumed a link:
 
 ```php
-$invite = Teams::for($team)->invite(role: 'member', maxUses: 5);
+$invite = Teams::for($team)->invites()->create(role: 'member', maxUses: 5);
 // ... three people accept ...
 
 $invite->consumedSeats();      // 3
@@ -422,8 +482,9 @@ Each accept increments the invite's `uses`; a single-use invite is deleted on it
 accept (the original behaviour), while a multi-use invite survives until exhausted. Accepting
 an **expired** invite throws `InviteExpiredException`; an **exhausted** invite throws
 `InviteExhaustedException`; an email-targeted invite with a non-matching email throws
-`InviteEmailMismatchException`; and `Teams::acceptInviteByCode` on an unknown code throws
-`InviteNotFoundException` (all extend `RoundlyConsulting\Teams\Exceptions\TeamsException`).
+`InviteEmailMismatchException`; `Teams::invites()->accept()` on an unknown code throws
+`InviteNotFoundException`, as does resending or revoking another team's invite through
+`Teams::for($team)` (all extend `RoundlyConsulting\Teams\Exceptions\TeamsException`).
 
 Resending an invite fires `InviteResent`. The package ships a publishable accept-invite
 controller and route stub (`teams-stubs` tag) — it does not register routes itself, so you
@@ -434,25 +495,29 @@ control the URLs.
 The inverse of invites: a user asks to join a (public) team and an admin approves or denies.
 
 ```php
-$request = Teams::requestToJoin($team, $user, requestedRole: 'member', message: 'Please add me');
+$requests = Teams::for($team)->joinRequests();
+
+$request = $requests->open($user, requestedRole: 'member', message: 'Please add me');
 
 // Idempotent: a second call for the same (team, user) returns the existing pending request.
-Teams::for($team)->approveJoinRequest($request, $admin);   // adds the member, fires JoinRequestApproved
-Teams::for($team)->denyJoinRequest($request, $admin);      // fires JoinRequestDenied, no membership
+$requests->approve($request, by: $admin);   // adds the member, fires JoinRequestApproved
+$requests->deny($request, by: $admin);      // fires JoinRequestDenied, no membership
 
-$team->joinRequests()->pending()->get();
+$requests->pending();                       // Collection<JoinRequest>
 ```
 
-Approving resolves the role from the responder override, then the requested role, then
-`roles.default`. Approving or denying a non-pending request is a guarded no-op.
+Approving resolves the role from the responder override (`role:`), then the requested role,
+then the team's default role, then `roles.default`. Approving or denying a non-pending request
+is a guarded no-op; approving or denying **another team's** request throws
+`JoinRequestNotFoundException`.
 
 Join requests can optionally expire. Pass `expiresAt` to set a deadline; a `null` expiry
-(the default) never lapses, preserving the original behaviour. `teams:join-requests:prune`
-auto-declines any pending request whose expiry has passed — reusing the `Denied` status with a
+(the default) never lapses, preserving the original behaviour. `Teams::joinRequests()->expire()`
+(or `teams:join-requests:prune`) auto-declines any pending request whose expiry has passed — reusing the `Denied` status with a
 **null responder** (system-decided) and firing `JoinRequestExpired`:
 
 ```php
-$request = Teams::requestToJoin($team, $user, requestedRole: 'member', expiresAt: now()->addDays(14));
+$request = Teams::for($team)->joinRequests()->open($user, requestedRole: 'member', expiresAt: now()->addDays(14));
 
 $request->isExpired();                      // true once the deadline passes
 JoinRequest::query()->expiredPending();     // pending requests past their expiry
@@ -477,12 +542,11 @@ php artisan teams:members:expiring --days=3        # narrow the window
 php artisan teams:members:expiring --days=3 --notify  # fire MembershipExpiringSoon per member
 ```
 
-Reuse the action from your own scheduled job — no Artisan needed:
+The same from your own scheduled job — no Artisan needed:
 
 ```php
-use RoundlyConsulting\Teams\Actions\DispatchExpiringMembershipsAction;
-
-app(DispatchExpiringMembershipsAction::class)->execute(withinDays: 7, notify: true);
+Teams::members()->expiring(days: 7);        // read-only
+Teams::members()->notifyExpiring(days: 7);  // fire MembershipExpiringSoon per member
 
 // or query directly:
 Member::query()->expiringWithin(7)->get();
@@ -608,15 +672,48 @@ the package ships the wiring, your app owns the content. It reads
 
 ### Test helpers
 
-In host-application tests, fake the facade and use the expectation matchers:
+`Teams::fake()` swaps in `RoundlyConsulting\Teams\Testing\TeamsFake`, a recording subclass
+of `TeamsManager`. Operations **still run** against your test database; the fake records each
+one — whether made through the facade, an injected `TeamsManager`, a handle, a model method
+(`$team->addMember()`, `$invite->revoke()`, `$membership->removeFromTeam()`), a command or the
+approvals listener — so you can assert on what your code asked for:
 
 ```php
 use RoundlyConsulting\Teams\Facades\Teams;
 
 Teams::fake();
-Teams::for($team)->addMember($user, 'admin');
-Teams::assertMemberAdded($team, $user);     // also assertTeamCreated / assertInviteCreated
+
+// ... exercise your code ...
+
+Teams::assertTeamCreated('Acme');
+Teams::assertMemberAdded($team, $user, 'admin');
+Teams::assertInviteRevoked($invite);
+Teams::assertJoinRequestApproved($request, by: $admin);
+Teams::assertNothingRemoved();
 ```
+
+| Operation | Assert | Negative |
+|---|---|---|
+| `create()` | `assertTeamCreated(?name)` | `assertNothingCreated()` |
+| `transferOwnershipTo()` | `assertOwnershipTransferred($team, ?to)` | `assertNothingTransferred()` |
+| `members()->add()` | `assertMemberAdded($team, $member, ?role)`, `assertMemberNotAdded($team, $member)` | `assertNothingAdded()` |
+| `members()->remove()` | `assertMemberRemoved($team, $member)` | `assertNothingRemoved()` |
+| `members()->changeRole()` | `assertRoleChanged($team, $member, ?role)` | `assertNoRoleChanged()` |
+| `invites()->create()` | `assertInviteCreated($team, ?email)` | `assertNothingInvited()` |
+| `invites()->resend()` | `assertInviteResent($invite)` | `assertNothingResent()` |
+| `invites()->revoke()` | `assertInviteRevoked($invite)` | `assertNothingRevoked()` |
+| `invites()->accept()` | `assertInviteAccepted(?invite, ?by)` | `assertNothingAccepted()` |
+| `joinRequests()->open()` | `assertJoinRequested($team, ?requester)` | `assertNothingRequested()` |
+| `joinRequests()->approve()` | `assertJoinRequestApproved($request, ?by)` | `assertNothingApproved()` |
+| `joinRequests()->deny()` | `assertJoinRequestDenied($request, ?by)` | `assertNothingDenied()` |
+| `roles()->define()` | `assertRoleDefined($team, ?key)` | `assertNothingDefined()` |
+| `members()->notifyExpiring()` | `assertExpiringMembersNotified()` | `assertNothingNotified()` |
+| `invites()->prune()`, `members()->prune()`, `joinRequests()->expire()` | `assertInvitesPruned()`, `assertMembersPruned()`, `assertJoinRequestsExpired()` | `assertNothingPruned()` |
+| anything | `recorded(?TeamOperation)` | `assertNothingRecorded()` |
+
+Only the operation you called is recorded, not what it does internally: accepting an invite
+records `accept`, not the member add inside it. Registering global roles and permissions is
+boot-time configuration and is not recorded.
 
 Register the Pest matchers (publish `teams-stubs`, then `require` the published file from
 `tests/Pest.php`, or call `TeamExpectations::register()`):
@@ -702,52 +799,59 @@ $settings->maxSeats();                 // ?int
 
 These feed the join/seat behaviour directly:
 
-- **`JoinPolicy::InviteOnly`** — `Teams::requestToJoin()` throws `TeamsException`.
+- **`JoinPolicy::InviteOnly`** — `joinRequests()->open()` throws `TeamsException`.
 - **`JoinPolicy::Open`** — a request is auto-approved (member added) unless
   `requireApprovalToJoin` is on, in which case it stays pending.
 - **`JoinPolicy::Request`** (default) — a pending request awaiting a decision (unchanged).
-- **`MaxSeats`** — `addMember` throws `TeamsException` once the active membership hits the cap.
+- **`MaxSeats`** — `members()->add()` throws `TeamsException` once the active membership hits the cap.
 - **`DefaultMemberRole`** — the fallback role when approving a request with none supplied.
 
 Read/write a single option directly too: `$team->option(MaxSeats::class)->set(50)`.
 
 ### Team contacts & addresses
 
-```php
-$team->addEmail('support@acme.io', 'support', primary: true);
-$team->addPhone('+441234567890', 'ops');
-$team->primaryEmail();                                   // Contact|null
-Teams::for($team)->addContactEmail('billing@acme.io', 'billing', primary: true);
+`Teams::for($team)->contacts()` and `->addresses()` hand you the team's `ContactBook` and
+`AddressBook` from the contacts and addresses packages (`Contacts::for($team)`,
+`Addresses::for($team)`), so their facades — and their fakes — apply:
 
-$team->createAddress(
+```php
+Teams::for($team)->contacts()->email('billing@acme.io')->label('billing')->primary()->add();
+Teams::for($team)->contacts()->primary(ContactType::Email);   // Contact|null
+
+Teams::for($team)->addresses()->add(new AddressData(
     city: 'London', street: '1 King St', postalCode: 'EC1A 1AA',
-    countryIsoCode: 'GB', type: AddressType::Billing, isPrimary: true,
-);
+    countryIso: 'GB', type: AddressType::Billing, isPrimary: true,
+));
+Teams::for($team)->addresses()->primary(AddressType::Billing);
+
+// The traits on the Team model work too:
+$team->addEmail('support@acme.io', 'support', primary: true);
 $team->getPrimaryAddressOfType(AddressType::Billing);
-Teams::for($team)->addAddress(city: 'Berlin', street: '…', postalCode: '…', countryIsoCode: 'DE');
 ```
 
 ### Governed join-request sign-off (approvals)
 
 Opt in per request. Enable `teams.approvals.enabled`, then route the request through the
-approvals engine instead of a single responder. The native
-`approveJoinRequest`/`denyJoinRequest` path is untouched.
+approvals engine instead of a single responder. The native `joinRequests()->approve()/deny()`
+path is untouched.
 
 ```php
 // config('teams.approvals.enabled') = true
-$request = Teams::for($team)
+$request = Teams::for($team)->joinRequests()
     ->requireApprovalFrom([$admin1, $admin2])
     ->rule(ApprovalRule::Quorum)
     ->quorum(2)
-    ->requestToJoinFor($user);   // opens pending; an ApprovalRequest is created
+    ->open($user);   // opens pending; an ApprovalRequest is created
 
 // Admins sign off through the approvals engine:
 Approvals::for($request)->as($admin1)->approve();
 Approvals::for($request)->as($admin2)->approve();  // quorum reached
 ```
 
-When the engine resolves, `SyncJoinRequestStatusFromApproval` mirrors the outcome onto the
-join request: **approved** runs the add-member path and fires `JoinRequestApproved`;
+`requireApprovalFrom()`, `rule()` and `quorum()` return a new handle, so a staged handle can be
+kept and reused. When the engine resolves, `SyncJoinRequestStatusFromApproval` mirrors the
+outcome onto the join request through `Teams::for($team)->joinRequests()` (so `Teams::fake()`
+records it): **approved** runs the add-member path and fires `JoinRequestApproved`;
 **rejected** marks it `Denied` and fires `JoinRequestDenied`; **cancelled/expired** are no-ops.
 The listener is idempotent and only acts while `teams.approvals.enabled` is on.
 
@@ -762,7 +866,10 @@ $partnerTeam->acceptConnectionFrom($team);
 $team->isConnectedTo($partnerTeam);
 $team->connectablesOfType(Team::class);                 // partner teams
 $team->hasPermissionThroughConnection($partnerTeam, 'share:roster');
-Teams::for($team)->connectTo($partnerTeam, ['share:roster']);
+
+// Or through the connections facade, scoped to the team (Connections::from($team)):
+Teams::for($team)->connections()->to($partnerTeam)->withPermissions('share:roster')->connect();
+Teams::for($team)->connections()->to($partnerTeam)->disconnect();
 ```
 
 ## Testing

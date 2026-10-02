@@ -48,11 +48,17 @@ trait HasTeams
         return $this->teams()->exists();
     }
 
-    /** @return Collection<int, Member> */
+    /**
+     * The memberships in which this model holds `$role` right now — expired
+     * memberships hold no role.
+     *
+     * @return Collection<int, Member>
+     */
     public function teamsWithRole(string $role): Collection
     {
         /** @var Collection<int, Member> $members */
         $members = $this->teams()
+            ->active()
             ->where('role', $role)
             ->get();
 

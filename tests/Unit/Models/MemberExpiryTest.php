@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Blade;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
@@ -34,13 +35,28 @@ it('resolves no role and no permission for an expired member', function (): void
         ->and($team->findMember($user)?->role())->toBeNull();
 });
 
-it('keeps membership existence checks true while expired', function (): void {
+it('keeps the membership row for audit but fails every role check while expired', function (): void {
     $team = Team::factory()->create();
     $user = User::create();
     $team->addMember($user, 'manager', expiresAt: now()->subDay());
 
     expect($team->hasMember($user))->toBeTrue()
-        ->and($team->memberHasRole($user, 'manager'))->toBeTrue();
+        ->and($team->memberHasRole($user, 'manager'))->toBeFalse()
+        ->and($user->hasTeamRole($team, 'manager'))->toBeFalse()
+        ->and($user->teamsWithRole('manager'))->toBeEmpty()
+        ->and(Blade::render('@teamRole($team, "manager", $user) MANAGER-UI @endteamRole', ['team' => $team, 'user' => $user]))
+        ->not->toContain('MANAGER-UI');
+});
+
+it('passes role checks again once an expired membership is renewed', function (): void {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $team->addMember($user, 'manager', expiresAt: now()->subDay());
+
+    $team->addMember($user, 'manager', expiresAt: now()->addMonth());
+
+    expect($team->memberHasRole($user, 'manager'))->toBeTrue()
+        ->and($user->teamsWithRole('manager'))->toHaveCount(1);
 });
 
 it('still resolves role and permission for a non-expired member', function (): void {

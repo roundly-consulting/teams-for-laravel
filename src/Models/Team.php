@@ -150,9 +150,14 @@ class Team extends Model implements Connectable
             ->exists();
     }
 
+    /**
+     * Whether the model holds `$role` on this team right now. An expired membership
+     * holds no role (its row stays for audit until pruned — see hasMember()).
+     */
     public function memberHasRole(Model $member, string $role): bool
     {
         return $this->members()
+            ->active()
             ->whereMorphedTo('member', $member)
             ->where('role', $role)
             ->exists();

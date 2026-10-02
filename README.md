@@ -423,8 +423,11 @@ seat) serialise: one row per member, and the seat cap holds.
 #### Time-boxed memberships
 
 Pass `expiresAt` to grant a temporary membership (contractors, trials). Once expired, the
-member resolves **no role and no permissions** — but `hasMember` / `memberHasRole` still match
-the row so it remains for audit until pruned.
+member resolves **no role and no permissions**: `can('teams.…')`, `@teamPermission`,
+`@teamRole`, `memberHasRole()`, `hasTeamRole()`, `teamsWithRole()` and `teamRole()` all fail.
+The row itself stays for audit until pruned, so `hasMember()` / `belongsToTeam()` still match
+it — check a role or permission, not bare membership, when gating access. Adding the member
+again revives the membership.
 
 ```php
 $team->addMember($contractor, 'editor', expiresAt: now()->addDays(30));

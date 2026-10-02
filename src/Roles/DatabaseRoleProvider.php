@@ -7,10 +7,23 @@ namespace RoundlyConsulting\Teams\Roles;
 use RoundlyConsulting\Teams\Models\RoleDefinition;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 
+/**
+ * Roles persisted in `team_roles`. The role map is memoised for the lifetime of the
+ * instance — one request or job, since the container binds the provider scoped —
+ * and forgotten whenever a definition changes in this process.
+ */
 final class DatabaseRoleProvider implements RoleProvider
 {
     /** @var array<string, Role>|null */
     private ?array $cache = null;
+
+    /**
+     * @param  bool  $memoize  false when wrapped by {@see CachedRoleProvider}, whose
+     *                         refills must always read the table
+     */
+    public function __construct(
+        private readonly bool $memoize = true,
+    ) {}
 
     /** @param list<string|Permission> $permissions */
     public function register(string $key, string $name, array $permissions = []): Role
@@ -46,7 +59,21 @@ final class DatabaseRoleProvider implements RoleProvider
             $roles[$definition->key] = $this->toRole($definition);
         }
 
-        return $this->cache = $roles;
+        if ($this->memoize) {
+            $this->cache = $roles;
+        }
+
+        return $roles;
+    }
+
+    /**
+     * Forget the memoised role map.
+     *
+     * @internal called when a role definition changes
+     */
+    public function flush(): void
+    {
+        $this->cache = null;
     }
 
     private function toRole(RoleDefinition $definition): Role

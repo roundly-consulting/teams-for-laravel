@@ -11,12 +11,19 @@ use Illuminate\Support\Facades\Cache;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 
 /**
- * Caches an inner RoleProvider's role map and flushes it on every mutation.
- * Tag support is used only when the configured store supports tags.
+ * Caches an inner RoleProvider's role map in the shared cache and flushes it on
+ * every mutation. Tag support is used only when the configured store supports tags.
+ *
+ * The map read from the cache is memoised for the lifetime of the instance (one
+ * request or job — the container binds the provider scoped), and a refill always
+ * comes from the inner provider, which must not memoise.
  */
 final class CachedRoleProvider implements RoleProvider
 {
     private const TAG = 'teams.roles';
+
+    /** @var array<string, Role>|null */
+    private ?array $roles = null;
 
     public function __construct(
         private readonly RoleProvider $inner,
@@ -40,14 +47,29 @@ final class CachedRoleProvider implements RoleProvider
     /** @return array<string, Role> */
     public function all(): array
     {
+        if ($this->roles !== null) {
+            return $this->roles;
+        }
+
         /** @var array<string, Role> $roles */
         $roles = $this->cache()->remember($this->key(), $this->ttl(), fn (): array => $this->inner->all());
 
-        return $roles;
+        return $this->roles = $roles;
     }
 
-    private function flush(): void
+    /**
+     * Forget the memoised map and the shared cache entry.
+     *
+     * @internal called on every role mutation and when a role definition changes
+     */
+    public function flush(): void
     {
+        $this->roles = null;
+
+        if ($this->inner instanceof DatabaseRoleProvider) {
+            $this->inner->flush();
+        }
+
         $store = $this->store();
         $taggable = $this->taggable($store);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams;
 
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -84,16 +85,24 @@ final class TeamsServiceProvider extends PackageServiceProvider
     {
         parent::register();
 
-        $this->app->singleton(RoleProvider::class, function (): RoleProvider {
+        // Code-defined roles are registered once at boot, so their registry lives for
+        // the whole process.
+        $this->app->singleton(InMemoryRoleProvider::class);
+
+        // SCOPED, not a singleton: the database provider memoises the role map, and a
+        // queue worker or Octane process outlives any single request. The container
+        // forgets scoped instances before every job and request, so a permission
+        // revoked by another process is honoured from the next one on.
+        $this->app->scoped(RoleProvider::class, function (Application $app): RoleProvider {
             if (config('teams.roles.provider') !== 'database') {
-                return new InMemoryRoleProvider;
+                return $app->make(InMemoryRoleProvider::class);
             }
 
-            $provider = new DatabaseRoleProvider;
-
+            // Behind the shared cache the database provider must not memoise: a cache
+            // refill has to read the table, never this process's earlier copy of it.
             return config('teams.roles.cache.enabled')
-                ? new CachedRoleProvider($provider)
-                : $provider;
+                ? new CachedRoleProvider(new DatabaseRoleProvider(memoize: false))
+                : new DatabaseRoleProvider;
         });
 
         $this->app->singleton(TeamRoleResolver::class);

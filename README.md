@@ -323,6 +323,14 @@ When using the `database` provider, set `roles.cache.enabled` to cache the role 
 it automatically on every `Teams::roles()->register(...)`. Tag-aware stores are flushed by tag;
 other stores fall back to a single key forget. Off by default.
 
+Revocations take effect promptly in long-lived processes too. The role provider is bound
+**scoped**: the role map is read at most once per request or queued job — queue workers and
+Octane start each one with a fresh provider — so a permission revoked by another process stops
+granting from the next request or job. Saving or deleting a `RoleDefinition` (through
+`register()` or straight through the model, e.g. from an admin screen) flushes the current
+process's map and the shared cache immediately, and a cache refill always reads the table,
+never a worker's older copy.
+
 ### Enumerating permissions
 
 A permission registry lets you list every known permission — for a role-editor or

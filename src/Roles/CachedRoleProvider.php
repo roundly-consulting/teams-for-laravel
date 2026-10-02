@@ -30,9 +30,9 @@ final class CachedRoleProvider implements RoleProvider
     ) {}
 
     /** @param list<string|Permission> $permissions */
-    public function register(string $key, string $name, array $permissions = []): Role
+    public function register(string $key, string $name, array $permissions = [], string $description = ''): Role
     {
-        $role = $this->inner->register($key, $name, $permissions);
+        $role = $this->inner->register($key, $name, $permissions, $description);
 
         $this->flush();
 

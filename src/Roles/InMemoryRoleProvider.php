@@ -11,10 +11,14 @@ final class InMemoryRoleProvider implements RoleProvider
     /** @var array<string, Role> */
     private array $roles = [];
 
-    /** @param list<string|Permission> $permissions */
-    public function register(string $key, string $name, array $permissions = []): Role
+    /**
+     * An upsert: the last registration of a key wins, as with the database provider.
+     *
+     * @param  list<string|Permission>  $permissions
+     */
+    public function register(string $key, string $name, array $permissions = [], string $description = ''): Role
     {
-        return $this->roles[$key] ??= new Role($key, $name, $permissions);
+        return $this->roles[$key] = new Role($key, $name, $permissions, $description);
     }
 
     public function find(string $key): ?Role

@@ -9,8 +9,13 @@ use RoundlyConsulting\Teams\Roles\Role;
 
 interface RoleProvider
 {
-    /** @param list<string|Permission> $permissions */
-    public function register(string $key, string $name, array $permissions = []): Role;
+    /**
+     * Define a role — an upsert on `$key`: registering a key again replaces its
+     * name, permissions and description, whichever provider backs it.
+     *
+     * @param  list<string|Permission>  $permissions
+     */
+    public function register(string $key, string $name, array $permissions = [], string $description = ''): Role;
 
     public function find(string $key): ?Role;
 

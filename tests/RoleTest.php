@@ -14,14 +14,6 @@ it('holds values in public properties', function () {
         ->description->toBe('Most powerful role');
 });
 
-it('sets description via method', function () {
-    $role = new Role('admin', 'Admin', ['everything']);
-    $role->description('Most powerful role');
-
-    expect($role->description)
-        ->toBe('Most powerful role');
-});
-
 it('checks whether role has permission', function () {
     $role = new Role('admin', 'Admin', ['everything'], 'Most powerful role');
 

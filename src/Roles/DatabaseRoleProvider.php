@@ -26,7 +26,7 @@ final class DatabaseRoleProvider implements RoleProvider
     ) {}
 
     /** @param list<string|Permission> $permissions */
-    public function register(string $key, string $name, array $permissions = []): Role
+    public function register(string $key, string $name, array $permissions = [], string $description = ''): Role
     {
         // Trashed rows included: the unique key index covers them, so a deleted
         // definition is restored and redefined rather than re-inserted.
@@ -35,6 +35,7 @@ final class DatabaseRoleProvider implements RoleProvider
         $definition->fill([
             'name' => $name,
             'permissions' => $this->permissionKeys($permissions),
+            'description' => $description,
         ]);
 
         if ($definition->trashed()) {

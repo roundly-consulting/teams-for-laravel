@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Roles;
 
+/**
+ * A resolved role. Built by a role provider — define or change one through
+ * `Teams::roles()->register()` (or a per-team override), never by mutating this
+ * object: a copy changed here would not reach the stored definition.
+ */
 final class Role
 {
     /** @var list<string> */
@@ -23,7 +28,7 @@ final class Role
     }
 
     /** @param list<string|Permission> $permissions */
-    public function setPermissions(array $permissions): self
+    private function setPermissions(array $permissions): void
     {
         $objects = [];
         $keys = [];
@@ -36,15 +41,6 @@ final class Role
 
         $this->permissionObjects = $objects;
         $this->permissions = $keys;
-
-        return $this;
-    }
-
-    public function description(string $description): self
-    {
-        $this->description = $description;
-
-        return $this;
     }
 
     public function hasPermission(string $name): bool

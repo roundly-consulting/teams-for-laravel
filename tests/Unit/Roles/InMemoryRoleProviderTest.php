@@ -18,11 +18,11 @@ it('registers, finds and lists roles', function () {
         ->and($provider->all())->toHaveKey('editor');
 });
 
-it('does not re-register an existing key', function () {
+it('replaces an existing key on re-register', function () {
     $provider = new InMemoryRoleProvider;
 
-    $first = $provider->register('admin', 'Admin', ['*']);
+    $provider->register('admin', 'Admin', ['*']);
     $second = $provider->register('admin', 'Changed', ['none']);
 
-    expect($second)->toBe($first)->name->toBe('Admin');
+    expect($provider->find('admin'))->toBe($second)->name->toBe('Changed');
 });

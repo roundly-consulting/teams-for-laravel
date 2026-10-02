@@ -280,15 +280,22 @@ use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Roles\Permission;
 
 Teams::roles()->register('admin', 'Admin', ['*']);
-Teams::roles()->register('editor', 'Editor', ['edit', new Permission('publish', 'Publish posts')])
-    ->description('Can edit and publish content.');
+Teams::roles()->register(
+    'editor',
+    'Editor',
+    ['edit', new Permission('publish', 'Publish posts')],
+    description: 'Can edit and publish content.',
+);
 Teams::roles()->register('user', 'User');
 
 Teams::roles()->all();          // array<string, Role>
 Teams::roles()->find('admin');  // ?Role
 ```
 
-`Teams::roles()` returns the configured `RoleProvider` (`register`, `find`, `all`).
+`Teams::roles()` returns the configured `RoleProvider` (`register`, `find`, `all`). `register()`
+is an upsert on the key with either provider: registering a key again replaces its name,
+permissions and description. The `Role` it returns is a read-only result — change a role by
+registering it again.
 
 #### Storing roles in the database
 
@@ -297,7 +304,7 @@ Set `roles.provider` to `database` and the same `Teams::roles()` API persists ro
 
 ```php
 // config/teams.php → 'roles' => ['provider' => 'database', ...]
-Teams::roles()->register('editor', 'Editor', ['edit', 'publish']); // upserts a RoleDefinition row
+Teams::roles()->register('editor', 'Editor', ['edit', 'publish'], description: 'Writes posts'); // upserts a RoleDefinition row
 ```
 
 #### Per-team role overrides

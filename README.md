@@ -507,9 +507,17 @@ $requests->pending();                       // Collection<JoinRequest>
 ```
 
 Approving resolves the role from the responder override (`role:`), then the requested role,
-then the team's default role, then `roles.default`. Approving or denying a non-pending request
-is a guarded no-op; approving or denying **another team's** request throws
-`JoinRequestNotFoundException`.
+then the team's default role, then `roles.default`. A resolved request is final: approving or
+denying one that is no longer pending (already approved, denied or expired — including by a
+concurrent responder) throws `JoinRequestNotPendingException` and changes nothing, so an old
+request can never re-add a removed member. The pending → resolved step is a single conditional
+update, so of two simultaneous responders exactly one wins. Approving or denying **another
+team's** request throws `JoinRequestNotFoundException`.
+
+A join request is for newcomers: `open()` throws `TeamsException` when the requester already
+holds an active membership, and approving a request whose requester has since joined (say,
+through an invite) resolves it without touching their role. Role changes go through
+`members()->changeRole()`.
 
 Join requests can optionally expire. Pass `expiresAt` to set a deadline; a `null` expiry
 (the default) never lapses, preserving the original behaviour. `Teams::joinRequests()->expire()`
@@ -855,7 +863,8 @@ kept and reused. When the engine resolves, `SyncJoinRequestStatusFromApproval` m
 outcome onto the join request through `Teams::for($team)->joinRequests()` (so `Teams::fake()`
 records it): **approved** runs the add-member path and fires `JoinRequestApproved`;
 **rejected** marks it `Denied` and fires `JoinRequestDenied`; **cancelled/expired** are no-ops.
-The listener is idempotent and only acts while `teams.approvals.enabled` is on.
+A join request already resolved by hand (or by expiry) keeps that outcome — the engine never
+overturns it. The listener only acts while `teams.approvals.enabled` is on.
 
 ### Team affiliations (connections)
 

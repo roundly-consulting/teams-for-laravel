@@ -9,6 +9,7 @@ use RoundlyConsulting\Approvals\Enums\ApprovalStatus;
 use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
 use RoundlyConsulting\Approvals\Models\ApprovalRequest;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
+use RoundlyConsulting\Teams\Exceptions\JoinRequestNotPendingException;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
 use RoundlyConsulting\Teams\TeamsManager;
@@ -21,9 +22,9 @@ use RoundlyConsulting\Teams\TeamsManager;
  * so `Teams::fake()` records engine-driven decisions too.
  *
  * Additive and opt-in: it only acts when teams.approvals.enabled is on and the
- * subject is a join request. Idempotency is inherited from the underlying
- * actions (a non-pending request is a no-op), so a double resolution never adds
- * a member twice.
+ * subject is a join request. A request that is no longer pending (resolved by
+ * hand, by expiry, or by a concurrent responder) is left as it is, so a double
+ * resolution never adds a member twice and never overturns a human decision.
  */
 final class SyncJoinRequestStatusFromApproval
 {
@@ -42,7 +43,8 @@ final class SyncJoinRequestStatusFromApproval
 
         $model = JoinRequestModel::class();
 
-        if (! $subject instanceof $model) {
+        // A request already resolved by hand (or by expiry) keeps that outcome.
+        if (! $subject instanceof $model || ! $subject->isPending()) {
             return;
         }
 
@@ -63,13 +65,17 @@ final class SyncJoinRequestStatusFromApproval
 
         $requests = $this->teams->for($team)->joinRequests();
 
-        if ($target === JoinRequestStatus::Approved) {
-            $requests->approve($subject, by: $responder);
+        try {
+            if ($target === JoinRequestStatus::Approved) {
+                $requests->approve($subject, by: $responder);
 
-            return;
+                return;
+            }
+
+            $requests->deny($subject, by: $responder);
+        } catch (JoinRequestNotPendingException) {
+            // Lost a race with a concurrent responder: their decision stands.
         }
-
-        $requests->deny($subject, by: $responder);
     }
 
     private function map(ApprovalStatus $status): ?JoinRequestStatus

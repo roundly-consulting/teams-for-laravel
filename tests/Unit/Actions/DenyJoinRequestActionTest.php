@@ -7,6 +7,8 @@ use RoundlyConsulting\Teams\Actions\DenyJoinRequestAction;
 use RoundlyConsulting\Teams\DataTransferObjects\RespondToJoinRequestData;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Events\JoinRequestDenied;
+use RoundlyConsulting\Teams\Exceptions\JoinRequestNotPendingException;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Tests\User;
@@ -32,13 +34,33 @@ it('denies a pending request without creating a membership', function (): void {
     Event::assertDispatched(JoinRequestDenied::class);
 });
 
-it('is a no-op on a non-pending request', function (): void {
+it('refuses to deny a request that is no longer pending', function (): void {
     Event::fake(JoinRequestDenied::class);
 
     $request = JoinRequest::factory()->create(['status' => JoinRequestStatus::Approved]);
 
-    app(DenyJoinRequestAction::class)->execute($request, new RespondToJoinRequestData(responder: User::create()));
+    expect(fn () => app(DenyJoinRequestAction::class)->execute($request, new RespondToJoinRequestData(responder: User::create())))
+        ->toThrow(JoinRequestNotPendingException::class);
 
     expect($request->fresh()?->status)->toBe(JoinRequestStatus::Approved);
     Event::assertNotDispatched(JoinRequestDenied::class);
+});
+
+it('cannot deny a stale copy of a request that was approved meanwhile', function (): void {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $request = JoinRequest::factory()->for($team)->create([
+        'requester_type' => $user->getMorphClass(),
+        'requester_id' => $user->getKey(),
+        'status' => JoinRequestStatus::Pending,
+    ]);
+    $stale = JoinRequest::query()->findOrFail($request->getKey());
+
+    Teams::for($team)->joinRequests()->approve($request, by: User::create());
+
+    expect(fn () => Teams::for($team)->joinRequests()->deny($stale, by: User::create()))
+        ->toThrow(JoinRequestNotPendingException::class);
+
+    expect($request->fresh()?->status)->toBe(JoinRequestStatus::Approved)
+        ->and($team->hasMember($user))->toBeTrue();
 });

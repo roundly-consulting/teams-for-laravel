@@ -91,3 +91,21 @@ it('resolves the join_request model from config', function (): void {
 
     expect($count)->toBe(1);
 });
+
+it('does not overwrite a request that was approved between the scan and the update', function (): void {
+    Event::fake(JoinRequestExpired::class);
+
+    $team = Team::factory()->create();
+    $request = JoinRequest::factory()->for($team)->expired()->create();
+
+    // Another process approves the row right after this one read it as pending.
+    JoinRequest::retrieved(function (JoinRequest $read): void {
+        JoinRequest::query()->whereKey($read->getKey())->update(['status' => JoinRequestStatus::Approved->value]);
+    });
+
+    $count = app(ExpireJoinRequestsAction::class)->execute();
+
+    expect($count)->toBe(0)
+        ->and($request->fresh()?->status)->toBe(JoinRequestStatus::Approved);
+    Event::assertNotDispatched(JoinRequestExpired::class);
+});

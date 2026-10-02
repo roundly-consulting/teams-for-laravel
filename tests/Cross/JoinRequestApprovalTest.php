@@ -84,6 +84,20 @@ it('refuses a decision from someone who is not a named approver', function (): v
         ->and($team->hasMember($user))->toBeFalse();
 });
 
+it('does not add the member when the engine approves a request an admin already denied', function (): void {
+    $team = Team::factory()->create();
+    $admin = User::create();
+    $user = User::create();
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
+
+    Teams::for($team)->joinRequests()->deny($request, by: $admin);
+
+    Approvals::for($request)->as($admin)->approve();
+
+    expect($request->fresh()?->status)->toBe(JoinRequestStatus::Denied)
+        ->and($team->hasMember($user))->toBeFalse();
+});
+
 it('holds pending until a quorum is reached', function (): void {
     $team = Team::factory()->create();
     $a = User::create();

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Event;
 use RoundlyConsulting\Approvals\Enums\ApprovalRule;
 use RoundlyConsulting\Approvals\Enums\ApprovalStatus;
 use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
+use RoundlyConsulting\Approvals\Exceptions\UnauthorizedApprovalException;
 use RoundlyConsulting\Approvals\Facades\Approvals;
 use RoundlyConsulting\Approvals\Models\ApprovalRequest;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
@@ -67,6 +68,20 @@ it('marks denied and dispatches the denied event when the engine rejects', funct
     expect($request->fresh()?->status)->toBe(JoinRequestStatus::Denied)
         ->and($team->hasMember($user))->toBeFalse()
         ->and($captured)->toBe([$request->getKey()]);
+});
+
+it('refuses a decision from someone who is not a named approver', function (): void {
+    $team = Team::factory()->create();
+    $admin = User::create();
+    $outsider = User::create();
+    $user = User::create();
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom($admin)->open($user);
+
+    expect(fn () => Approvals::for($request)->as($outsider)->approve())
+        ->toThrow(UnauthorizedApprovalException::class);
+
+    expect($request->fresh()?->status)->toBe(JoinRequestStatus::Pending)
+        ->and($team->hasMember($user))->toBeFalse();
 });
 
 it('holds pending until a quorum is reached', function (): void {

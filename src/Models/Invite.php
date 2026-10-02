@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use RoundlyConsulting\Teams\Database\Factories\InviteFactory;
 use RoundlyConsulting\Teams\Support\MemberModel;
 use RoundlyConsulting\Teams\Support\TeamModel;
@@ -142,7 +143,8 @@ class Invite extends Model
      */
     public function scopeForEmail(Builder $query, string $email): Builder
     {
-        return $query->where('email', $email);
+        // Invite emails are stored lower-cased by CreateInviteAction.
+        return $query->where('email', Str::lower(trim($email)));
     }
 
     public function isExpired(): bool

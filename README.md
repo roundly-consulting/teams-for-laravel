@@ -497,8 +497,10 @@ An **expired** or removed membership is revived through the invite, with the inv
 
 Accepting an **expired** invite throws `InviteExpiredException`; an **exhausted** (or already
 consumed) invite throws `InviteExhaustedException`; an email-targeted invite with a non-matching
-email throws `InviteEmailMismatchException`; a **revoked** invite, or
-`Teams::invites()->accept()` on an unknown code, throws `InviteNotFoundException`, as does
+email throws `InviteEmailMismatchException` (emails compare case-insensitively and are stored
+lower-cased, so `Jane@Acme.test` matches `jane@acme.test`); a **revoked** invite, an invite
+whose team was deleted, or `Teams::invites()->accept()` on an unknown code, throws
+`InviteNotFoundException`, as does
 resending or revoking another team's invite through `Teams::for($team)` (all extend
 `RoundlyConsulting\Teams\Exceptions\TeamsException`).
 

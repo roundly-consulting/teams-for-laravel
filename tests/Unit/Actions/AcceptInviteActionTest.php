@@ -8,6 +8,8 @@ use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
 use RoundlyConsulting\Teams\Events\InviteAccepted;
 use RoundlyConsulting\Teams\Exceptions\InviteEmailMismatchException;
 use RoundlyConsulting\Teams\Exceptions\InviteExpiredException;
+use RoundlyConsulting\Teams\Exceptions\InviteNotFoundException;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
@@ -73,4 +75,27 @@ it('stamps the accepted invite on the new membership', function () {
 
     expect($member->accepted_invite_id)->toBe($invite->getKey())
         ->and($member->acceptedInvite->is($invite))->toBeTrue();
+});
+
+it('matches an email-targeted invite case-insensitively', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $invite = Teams::for($team)->invites()->create(role: 'user', email: 'Jane@Acme.test');
+
+    $member = Teams::invites()->accept($invite, $user, email: 'jane@acme.TEST');
+
+    expect($member->role)->toBe('user')
+        ->and(Invite::query()->forEmail('JANE@acme.test')->withTrashed()->count())->toBe(1);
+});
+
+it('refuses an invite whose team was deleted with a package exception', function () {
+    $team = Team::factory()->create();
+    $user = User::create();
+    $invite = Invite::factory()->for($team)->create();
+    $team->delete();
+
+    expect(fn () => Teams::invites()->accept($invite, $user))
+        ->toThrow(InviteNotFoundException::class);
+
+    expect(Member::query()->count())->toBe(0);
 });

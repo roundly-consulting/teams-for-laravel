@@ -8,6 +8,7 @@ return [
     'invite_email_mismatch' => 'This invite is addressed to ":email".',
     'invite_exhausted' => 'The invite ":code" has reached its usage limit.',
     'invite_not_found' => 'No invite was found for the code ":code".',
+    'invite_team_missing' => 'The team of invite #:id no longer exists.',
     'invite_unavailable' => 'Invite #:id is no longer available.',
     'invite_not_in_team' => 'Invite #:id does not belong to this team.',
     'join_request_not_pending' => 'Join request #:id has already been resolved.',

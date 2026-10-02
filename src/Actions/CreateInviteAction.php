@@ -25,7 +25,8 @@ final readonly class CreateInviteAction
             'meta' => new Collection($data->meta),
             'code' => Str::random($codeLength),
             'role' => $data->role,
-            'email' => $data->email,
+            // Stored lower-cased: invite emails match case-insensitively.
+            'email' => $data->email !== null ? Str::lower(trim($data->email)) : null,
             'expires_at' => $expiresAt,
             'uses' => 0,
             'max_uses' => $data->maxUses,

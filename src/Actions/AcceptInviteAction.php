@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Actions;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 use RoundlyConsulting\Teams\DataTransferObjects\AcceptInviteData;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Events\InviteAccepted;
@@ -34,7 +35,7 @@ final readonly class AcceptInviteAction
      * seat is consumed and their role is never overwritten (an expired or removed
      * membership is revived through the invite instead).
      *
-     * @throws InviteNotFoundException when the invite was revoked or deleted
+     * @throws InviteNotFoundException when the invite (or its team) was revoked or deleted
      * @throws InviteExpiredException when the invite has expired
      * @throws InviteExhaustedException when the invite has no seat left
      * @throws InviteEmailMismatchException when the email does not match an email-targeted invite
@@ -56,12 +57,15 @@ final readonly class AcceptInviteAction
                 throw InviteNotFoundException::unavailable($current);
             }
 
-            if ($current->email !== null && $current->email !== $data->email) {
+            if ($current->email !== null && ! $this->sameEmail($current->email, $data->email)) {
                 throw InviteEmailMismatchException::for($current);
             }
 
-            /** @var Team $team */
             $team = $current->team;
+
+            if (! $team instanceof Team) {
+                throw InviteNotFoundException::teamMissing($current);
+            }
 
             $membership = $team->members()
                 ->whereMorphedTo('member', $data->member)
@@ -109,6 +113,14 @@ final readonly class AcceptInviteAction
             ->first();
 
         return $current ?? throw InviteNotFoundException::unavailable($invite);
+    }
+
+    /**
+     * Email addresses compare case-insensitively: `Jane@Acme.test` is `jane@acme.test`.
+     */
+    private function sameEmail(string $invited, ?string $given): bool
+    {
+        return $given !== null && Str::lower(trim($invited)) === Str::lower(trim($given));
     }
 
     /**

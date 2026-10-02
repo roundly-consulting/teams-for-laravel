@@ -23,6 +23,14 @@ final class InviteNotFoundException extends TeamsException
     }
 
     /**
+     * The invite's team was deleted, so there is nothing left to join.
+     */
+    public static function teamMissing(Invite $invite): self
+    {
+        return new self(trans('teams::errors.invite_team_missing', ['id' => (string) $invite->getKey()]));
+    }
+
+    /**
      * A team-scoped handle was handed another team's invite. The message names the
      * invite by id, never by its code — the code is the credential.
      */

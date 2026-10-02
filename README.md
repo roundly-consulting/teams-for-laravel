@@ -398,9 +398,16 @@ $team->memberHasRole(Model $member, string $role): bool;
 $team->memberHasPermission(Model $member, string $permission): bool;
 ```
 
-Adding a member is **idempotent**: re-adding an existing member returns the existing
-membership and updates its role if the requested role differs (no duplicate rows). Re-adding
-without an `expiresAt` keeps the existing expiry.
+A team holds **one membership row per member** (a unique index, soft-deleted rows included).
+Adding a member is **idempotent**: re-adding an active member returns the existing membership
+and updates its role if the requested role differs. Re-adding without an `expiresAt` keeps the
+existing expiry.
+
+Re-adding a member who was **removed** or whose membership **expired** revives that row as a
+fresh membership — role, meta and expiry come from the new call (no `expiresAt` = permanent) —
+and fires `TeamMemberAdded`; it takes a seat, so `MaxSeats` applies. Adds run in a transaction
+that locks the team row, so simultaneous adds (a double submit, two people accepting the last
+seat) serialise: one row per member, and the seat cap holds.
 
 #### Time-boxed memberships
 

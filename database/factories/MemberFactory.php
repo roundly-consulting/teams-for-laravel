@@ -20,7 +20,7 @@ final class MemberFactory extends Factory
         return [
             'team_id' => Team::factory(),
             'member_type' => 'user',
-            'member_id' => fake()->numberBetween(1, 1000),
+            'member_id' => fake()->unique()->numberBetween(1, 1_000_000),
             'role' => 'user',
             'accepted_invite_id' => null,
             'meta' => [],

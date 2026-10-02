@@ -24,6 +24,10 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
             $table->softDeletes();
+
+            // One row per (team, member), soft-deleted rows included: a removed or
+            // expired member is revived in place, never inserted a second time.
+            $table->unique(['team_id', 'member_type', 'member_id']);
         });
     }
 };

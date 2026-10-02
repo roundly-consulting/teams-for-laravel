@@ -45,3 +45,16 @@ it('reads roles persisted in the database', function () {
         ->and($provider->all())->toHaveKey('viewer')
         ->and($provider->find('absent'))->toBeNull();
 });
+
+it('re-registers a role whose definition was soft-deleted', function () {
+    $provider = new DatabaseRoleProvider;
+    $provider->register('editor', 'Editor', ['edit']);
+    RoleDefinition::query()->where('key', 'editor')->firstOrFail()->delete();
+
+    $role = $provider->register('editor', 'Editor', ['publish']);
+
+    expect($role->permissions)->toBe(['publish'])
+        ->and($provider->find('editor')?->permissions)->toBe(['publish'])
+        ->and(RoleDefinition::withTrashed()->where('key', 'editor')->count())->toBe(1)
+        ->and(RoleDefinition::query()->where('key', 'editor')->exists())->toBeTrue();
+});

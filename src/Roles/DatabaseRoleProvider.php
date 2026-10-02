@@ -28,13 +28,20 @@ final class DatabaseRoleProvider implements RoleProvider
     /** @param list<string|Permission> $permissions */
     public function register(string $key, string $name, array $permissions = []): Role
     {
-        $definition = RoleDefinition::query()->updateOrCreate(
-            ['key' => $key],
-            [
-                'name' => $name,
-                'permissions' => $this->permissionKeys($permissions),
-            ],
-        );
+        // Trashed rows included: the unique key index covers them, so a deleted
+        // definition is restored and redefined rather than re-inserted.
+        $definition = RoleDefinition::query()->withTrashed()->firstOrNew(['key' => $key]);
+
+        $definition->fill([
+            'name' => $name,
+            'permissions' => $this->permissionKeys($permissions),
+        ]);
+
+        if ($definition->trashed()) {
+            $definition->restore();
+        } else {
+            $definition->save();
+        }
 
         $this->cache = null;
 

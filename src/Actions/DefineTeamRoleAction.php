@@ -12,18 +12,28 @@ use RoundlyConsulting\Teams\Support\TeamRoleModel;
 final readonly class DefineTeamRoleAction
 {
     /**
-     * Upsert a per-team role override. Idempotent on (team_id, key).
+     * Upsert a per-team role override. Idempotent on (team_id, key); an override
+     * that was soft-deleted is restored and redefined rather than re-inserted
+     * (the unique index covers trashed rows).
      */
     public function execute(DefineTeamRoleData $data): TeamRole
     {
-        $role = TeamRoleModel::query()->updateOrCreate(
-            ['team_id' => $data->teamId, 'key' => $data->key],
-            [
-                'name' => $data->name,
-                'permissions' => $this->permissionKeys($data->permissions),
-                'description' => $data->description,
-            ],
-        );
+        /** @var TeamRole $role */
+        $role = TeamRoleModel::query()
+            ->withTrashed()
+            ->firstOrNew(['team_id' => $data->teamId, 'key' => $data->key]);
+
+        $role->fill([
+            'name' => $data->name,
+            'permissions' => $this->permissionKeys($data->permissions),
+            'description' => $data->description,
+        ]);
+
+        if ($role->trashed()) {
+            $role->restore();
+        } else {
+            $role->save();
+        }
 
         return $role;
     }

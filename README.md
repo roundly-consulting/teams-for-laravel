@@ -800,8 +800,10 @@ $settings->maxSeats();                 // ?int
 These feed the join/seat behaviour directly:
 
 - **`JoinPolicy::InviteOnly`** — `joinRequests()->open()` throws `TeamsException`.
-- **`JoinPolicy::Open`** — a request is auto-approved (member added) unless
-  `requireApprovalToJoin` is on, in which case it stays pending.
+- **`JoinPolicy::Open`** — a request is auto-approved and the requester joins with the
+  team's **default role** (`DefaultMemberRole`, then `roles.default`) — never a role they
+  asked for. A request for any other role (`requestedRole: 'admin'`) stays pending for an
+  owner/admin to approve, and so does every request while `requireApprovalToJoin` is on.
 - **`JoinPolicy::Request`** (default) — a pending request awaiting a decision (unchanged).
 - **`MaxSeats`** — `members()->add()` throws `TeamsException` once the active membership hits the cap.
 - **`DefaultMemberRole`** — the fallback role when approving a request with none supplied.

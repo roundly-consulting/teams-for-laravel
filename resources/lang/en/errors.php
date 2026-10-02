@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'already_member' => 'The given model is already a member of team #:team.',
     'invite_expired' => 'The invite ":code" has expired.',
     'invite_email_mismatch' => 'This invite is addressed to ":email".',
     'invite_exhausted' => 'The invite ":code" has reached its usage limit.',

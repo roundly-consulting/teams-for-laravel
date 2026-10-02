@@ -29,8 +29,13 @@ final readonly class RequestToJoinAction
     /**
      * Create a pending join request, honouring the team's JoinPolicy option:
      * an invite-only team rejects the request, and an open team without a
-     * require-approval switch auto-approves it. Idempotent: an existing pending
-     * request for the (team, requester) pair is returned unchanged.
+     * require-approval switch auto-approves it — always into the team's default
+     * role. A request for any other role is user input, so it stays pending for
+     * an owner/admin to decide. Idempotent: an existing pending request for the
+     * (team, requester) pair is returned unchanged.
+     *
+     * A model that already holds an active membership is refused: a join request
+     * is never a way to change an existing member's role.
      *
      * When approvers are staged and teams.approvals.enabled is on, a request left
      * pending is routed through the approvals engine; the
@@ -43,6 +48,12 @@ final readonly class RequestToJoinAction
 
         if ($policy === JoinPolicy::InviteOnly) {
             throw TeamsException::joinPolicyForbidsRequests();
+        }
+
+        $membership = $data->team->findMember($data->requester);
+
+        if ($membership !== null && ! $membership->isExpired()) {
+            throw TeamsException::alreadyMember($data->team);
         }
 
         $existing = $data->team->joinRequests()
@@ -67,8 +78,10 @@ final readonly class RequestToJoinAction
 
         JoinRequestCreated::dispatch($request);
 
-        if ($policy === JoinPolicy::Open && ! $this->requiresApproval($data)) {
-            $this->autoApprove($request, $data);
+        $defaultRole = $this->defaultRole($data);
+
+        if ($policy === JoinPolicy::Open && ! $this->requiresApproval($data) && $this->asksForDefaultRole($data, $defaultRole)) {
+            $this->autoApprove($request, $data, $defaultRole);
         }
 
         if ($this->routesThroughApprovals($data) && $request->isPending()) {
@@ -107,7 +120,11 @@ final readonly class RequestToJoinAction
         return (bool) Options::get(RequireApprovalToJoin::class, $data->team);
     }
 
-    private function autoApprove(JoinRequest $request, RequestToJoinData $data): void
+    /**
+     * The role an auto-approved requester receives: the team's DefaultMemberRole
+     * option, then `teams.roles.default`. Never the requested role.
+     */
+    private function defaultRole(RequestToJoinData $data): string
     {
         /** @var string $configDefault */
         $configDefault = config('teams.roles.default', 'member');
@@ -115,8 +132,16 @@ final readonly class RequestToJoinAction
         /** @var string|null $teamDefault */
         $teamDefault = Options::get(DefaultMemberRole::class, $data->team);
 
-        $role = $data->requestedRole ?? $teamDefault ?? $configDefault;
+        return $teamDefault ?? $configDefault;
+    }
 
+    private function asksForDefaultRole(RequestToJoinData $data, string $defaultRole): bool
+    {
+        return $data->requestedRole === null || $data->requestedRole === $defaultRole;
+    }
+
+    private function autoApprove(JoinRequest $request, RequestToJoinData $data, string $role): void
+    {
         $this->addMember->execute($data->team, new AddMemberData(
             member: $data->requester,
             role: $role,

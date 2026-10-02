@@ -146,3 +146,43 @@ it('falls back to the config default role when no team default is set', function
 
     expect($member->role)->toBe('user');
 });
+
+it('never auto-approves an open-team request into the role the requester chose', function (): void {
+    Teams::roles()->register('owner', 'Owner', ['*']);
+    $team = Team::factory()->create();
+    Teams::for($team)->settings()->setJoinPolicy(JoinPolicy::Open);
+    $attacker = User::create();
+
+    $request = Teams::for($team)->joinRequests()->open($attacker, requestedRole: 'owner');
+
+    // An elevated role needs a human decision: the request waits for an owner/admin.
+    expect($request->status)->toBe(JoinRequestStatus::Pending)
+        ->and($team->hasMember($attacker))->toBeFalse()
+        ->and($attacker->can('teams.billing', $team))->toBeFalse();
+});
+
+it('auto-approves an open-team request with the team default role', function (): void {
+    $team = Team::factory()->create();
+    Teams::for($team)->settings()
+        ->setJoinPolicy(JoinPolicy::Open)
+        ->setDefaultMemberRole('user');
+    $user = User::create();
+
+    $request = Teams::for($team)->joinRequests()->open($user, requestedRole: 'user');
+
+    expect($request->status)->toBe(JoinRequestStatus::Approved)
+        ->and($team->findMember($user)?->role)->toBe('user');
+});
+
+it('refuses a join request from an existing member so it cannot change their role', function (): void {
+    $team = Team::factory()->create();
+    Teams::for($team)->settings()->setJoinPolicy(JoinPolicy::Open);
+    $member = User::create();
+    $team->addMember($member, 'user');
+
+    expect(fn () => Teams::for($team)->joinRequests()->open($member, requestedRole: 'admin'))
+        ->toThrow(TeamsException::class, 'already a member');
+
+    expect($team->findMember($member)?->role)->toBe('user')
+        ->and($team->joinRequests()->count())->toBe(0);
+});

@@ -48,17 +48,28 @@ Install the package via Composer:
 composer require roundly-consulting/teams-for-laravel
 ```
 
-Publish and run the migrations. Publishing is **required** — the package does not
-auto-load its migrations, so a bare `php artisan migrate` will not create its tables:
+Publish and run the migrations — this package's **and those of the roundly packages it builds
+on**. Publishing is **required**: none of them auto-load their migrations, so a bare
+`php artisan migrate` creates no tables. Teams reads its per-team settings (join policy, seat
+cap, default role) from the options package on every member add and join request, so the
+`options` table is needed from the very first `Teams::create()`; the contacts, addresses,
+connections and approvals tables back `Teams::for($team)->contacts()`, `->addresses()`,
+`->connections()` and the governed join-request sign-off:
 
 ```bash
+php artisan vendor:publish --tag="options-migrations"
+php artisan vendor:publish --tag="contacts-migrations"
+php artisan vendor:publish --tag="addresses-migrations"
+php artisan vendor:publish --tag="connections-migrations"
+php artisan vendor:publish --tag="approvals-migrations"
 php artisan vendor:publish --tag="teams-migrations"
 php artisan migrate
 ```
 
-The six migrations publish timestamp-injected and in dependency order (`teams` first,
+The six teams migrations publish timestamp-injected and in dependency order (`teams` first,
 then the tables whose foreign keys reference it), so they order correctly against your
 own migrations. Republishing lands on the same files, so `--force` overwrites in place.
+Migrations only migrate forward: rolling them back leaves the tables in place.
 
 Optionally publish the config file or translations:
 
@@ -97,6 +108,8 @@ return [
         'join_request' => JoinRequest::class,
     ],
 
+    'key_type' => env('TEAMS_KEY_TYPE', 'bigint'),
+
     'roles' => [
         'provider' => env('TEAMS_ROLES_PROVIDER', 'array'),
         'owner' => 'owner',
@@ -125,6 +138,12 @@ return [
         'prune_after' => env('TEAMS_JOIN_REQUESTS_PRUNE_AFTER', '30 days'),
     ],
 
+    'approvals' => [
+        'enabled' => (bool) env('TEAMS_APPROVALS', false),
+        'rule' => env('TEAMS_APPROVALS_RULE', 'unanimous'),
+        'quorum' => env('TEAMS_APPROVALS_QUORUM') !== null ? (int) env('TEAMS_APPROVALS_QUORUM') : null,
+    ],
+
     'gate' => [
         'register' => (bool) env('TEAMS_REGISTER_GATE', true),
         'prefix' => env('TEAMS_GATE_PREFIX', 'teams'),
@@ -145,6 +164,7 @@ return [
 | `models.invite`                  | `class-string` | `Invite::class`      | —                              | Model used for team invites.                                                      |
 | `models.team_role`               | `class-string` | `TeamRole::class`    | —                              | Model used for per-team role overrides.                                          |
 | `models.join_request`            | `class-string` | `JoinRequest::class` | —                              | Model used for join requests.                                                    |
+| `key_type`                       | `string`       | `bigint`             | `TEAMS_KEY_TYPE`               | Key type of the polymorphic `owner` / `member` / `invited_by` / `requester` / `responded_by` columns: `bigint`, `uuid` or `ulid` (anything else falls back to `bigint`). Read when the migrations run — set it before migrating. |
 | `roles.provider`                 | `string`       | `array`              | `TEAMS_ROLES_PROVIDER`         | Role storage driver: `array` (in code) or `database` (persisted).                |
 | `roles.owner`                    | `string`       | `owner`              | —                              | Role key granted to a team's creator/owner.                                      |
 | `roles.admin`                    | `string`       | `admin`              | —                              | Role a previous owner is demoted to when ownership is transferred.               |
@@ -159,12 +179,15 @@ return [
 | `members.prune_after`            | `string`       | `30 days`            | `TEAMS_MEMBERS_PRUNE_AFTER`    | Interval after a membership's expiry before `teams:members:prune` / `model:prune` deletes it. |
 | `members.expiring_within`        | `int`          | `7`                  | `TEAMS_MEMBERS_EXPIRING_WITHIN` | Default window (days) for `teams:members:expiring` and `MembershipExpiringSoon`. |
 | `join_requests.prune_after`      | `string`       | `30 days`            | `TEAMS_JOIN_REQUESTS_PRUNE_AFTER` | Interval after a resolved request's update before `model:prune` deletes it.    |
+| `approvals.enabled`              | `bool`         | `false`              | `TEAMS_APPROVALS`              | Route join requests staged with `requireApprovalFrom()` through the approvals engine (see [Governed join-request sign-off](#governed-join-request-sign-off-approvals)). |
+| `approvals.rule`                 | `string`       | `unanimous`          | `TEAMS_APPROVALS_RULE`         | Default `ApprovalRule` value when the handle sets none: `unanimous`, `quorum`, `any` or `weighted` (unknown values fall back to `unanimous`). |
+| `approvals.quorum`               | `?int`         | `null`               | `TEAMS_APPROVALS_QUORUM`       | Default quorum when the handle sets none.                                         |
 | `gate.register`                  | `bool`         | `true`               | `TEAMS_REGISTER_GATE`          | Register Laravel Gate abilities and Blade directives for team permissions.       |
 | `gate.prefix`                    | `string`       | `teams`              | `TEAMS_GATE_PREFIX`            | Ability-name prefix, e.g. `teams.manage-billing`.                                |
 | `gate.owner_ability`             | `string`       | `owner`              | `TEAMS_GATE_OWNER_ABILITY`     | Short ability that resolves to team ownership: `teams.owner`.                     |
 | `notifications.queue_connection` | `?string`      | `null`               | `TEAMS_NOTIFY_CONNECTION`      | Queue connection consumed by the publishable event-subscriber stub.              |
 
-The package works with zero configuration.
+Once the migrations above are published and run, the package works with zero configuration.
 
 ## Usage
 
@@ -195,7 +218,8 @@ $invite = Teams::for($team)->invites()->create(role: 'member', email: 'jane@acme
 Teams::for($team)->invites()->resend($invite);   // rotate code, extend expiry
 Teams::for($team)->invites()->revoke($invite);   // bool
 Teams::for($team)->invites()->pending();         // Collection<Invite>
-Teams::invites()->accept($invite, $user);        // or accept('the-code', $user, email: $user->email)
+Teams::invites()->accept($invite, $user, email: $user->email); // email must match an email-targeted invite
+Teams::invites()->accept('the-code', $user);     // a link invite (no email) by its code
 
 // Join requests
 $request = Teams::for($team)->joinRequests()->open($user, requestedRole: 'member', message: 'Hi');
@@ -536,7 +560,10 @@ invite is refused.
 
 ### Join requests
 
-The inverse of invites: a user asks to join a (public) team and an admin approves or denies.
+The inverse of invites: a user asks to join a team and an admin approves or denies. Whether a
+team takes requests at all is its `JoinPolicy` setting (see [Team settings](#team-settings-options)
+— `InviteOnly` refuses them), not `is_public`: `is_public` is only a discovery flag for
+`Team::query()->public()`, so a private team still accepts requests unless it is invite-only.
 
 ```php
 $requests = Teams::for($team)->joinRequests();

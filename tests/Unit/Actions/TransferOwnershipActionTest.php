@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Event;
 use RoundlyConsulting\Teams\Actions\TransferOwnershipAction;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\Events\TeamOwnershipTransferred;
+use RoundlyConsulting\Teams\Exceptions\TeamsException;
+use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\TeamsManager;
 use RoundlyConsulting\Teams\Tests\User;
@@ -43,4 +45,22 @@ it('transfers ownership when there is no previous owner', function () {
         ->and($team->memberHasRole($newOwner, 'owner'))->toBeTrue();
 
     Event::assertDispatched(fn (TeamOwnershipTransferred $e) => $e->previousOwner === null);
+});
+
+it('changes nothing when the new owner cannot be seated', function () {
+    Teams::roles()->register('owner', 'Owner', ['*']);
+    $owner = User::create();
+    $team = Teams::create(new CreateTeamData(name: 'Acme', owner: $owner));
+    Teams::for($team)->settings()->setMaxSeats(1);
+    $newcomer = User::create();
+
+    expect(fn () => Teams::for($team)->transferOwnershipTo($newcomer))
+        ->toThrow(TeamsException::class, 'seat limit');
+
+    $team->refresh();
+
+    expect($team->isOwnedBy($owner))->toBeTrue()
+        ->and($team->isOwnedBy($newcomer))->toBeFalse()
+        ->and($team->hasMember($newcomer))->toBeFalse()
+        ->and($team->findMember($owner)?->role)->toBe('owner');
 });

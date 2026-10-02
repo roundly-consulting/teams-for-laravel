@@ -375,7 +375,10 @@ Teams::for($team)->transferOwnershipTo($newOwner);
 ```
 
 When ownership is transferred, the new owner is ensured to be a member with the owner role
-and the previous owner is demoted to the configured admin role (kept on the team).
+and the previous owner is demoted to the configured admin role (kept on the team). The transfer
+is all-or-nothing: it runs in one transaction and seats the new owner first, so if they cannot
+be seated (`MaxSeats` reached) it throws `TeamsException` and the owner, roster and roles stay
+exactly as they were.
 
 A first-class **owner ability** removes hand-rolled "owner-only" permissions:
 

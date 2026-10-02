@@ -19,6 +19,10 @@ final readonly class TransferOwnershipAction
      * Transfer team ownership to a new owner. The new owner is ensured to be a
      * member with the configured owner role; the previous owner, if any, is
      * demoted to a regular member with the configured admin role.
+     *
+     * All-or-nothing: one transaction, and the new owner is seated first, so a
+     * refusal (the seat cap) leaves the owner, the roster and every role as they
+     * were.
      */
     public function execute(Team $team, Model $newOwner): Team
     {
@@ -28,27 +32,29 @@ final readonly class TransferOwnershipAction
         /** @var string $adminRole */
         $adminRole = config('teams.roles.admin', 'admin');
 
-        $previousOwner = $team->owner;
+        return $team->getConnection()->transaction(function () use ($team, $newOwner, $ownerRole, $adminRole): Team {
+            $previousOwner = $team->owner;
 
-        if ($previousOwner !== null && ! $previousOwner->is($newOwner)) {
             $this->addMember->execute($team, new AddMemberData(
-                member: $previousOwner,
-                role: $adminRole,
+                member: $newOwner,
+                role: $ownerRole,
             ));
-        }
 
-        $team->update([
-            'owner_type' => $newOwner->getMorphClass(),
-            'owner_id' => $newOwner->getKey(),
-        ]);
+            if ($previousOwner !== null && ! $previousOwner->is($newOwner)) {
+                $this->addMember->execute($team, new AddMemberData(
+                    member: $previousOwner,
+                    role: $adminRole,
+                ));
+            }
 
-        $this->addMember->execute($team, new AddMemberData(
-            member: $newOwner,
-            role: $ownerRole,
-        ));
+            $team->update([
+                'owner_type' => $newOwner->getMorphClass(),
+                'owner_id' => $newOwner->getKey(),
+            ]);
 
-        TeamOwnershipTransferred::dispatch($team, $previousOwner, $newOwner);
+            TeamOwnershipTransferred::dispatch($team, $previousOwner, $newOwner);
 
-        return $team;
+            return $team;
+        });
     }
 }

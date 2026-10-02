@@ -14,6 +14,15 @@ final class InviteNotFoundException extends TeamsException
     }
 
     /**
+     * The invite was revoked or deleted after the caller loaded it. Named by id,
+     * never by code.
+     */
+    public static function unavailable(Invite $invite): self
+    {
+        return new self(trans('teams::errors.invite_unavailable', ['id' => (string) $invite->getKey()]));
+    }
+
+    /**
      * A team-scoped handle was handed another team's invite. The message names the
      * invite by id, never by its code — the code is the credential.
      */

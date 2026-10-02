@@ -486,12 +486,21 @@ Force-deleting (or hard-pruning) an invite nulls `accepted_invite_id` on its mem
 than deleting them, so the membership roster is never lost to invite cleanup.
 
 Each accept increments the invite's `uses`; a single-use invite is deleted on its first
-accept (the original behaviour), while a multi-use invite survives until exhausted. Accepting
-an **expired** invite throws `InviteExpiredException`; an **exhausted** invite throws
-`InviteExhaustedException`; an email-targeted invite with a non-matching email throws
-`InviteEmailMismatchException`; `Teams::invites()->accept()` on an unknown code throws
-`InviteNotFoundException`, as does resending or revoking another team's invite through
-`Teams::for($team)` (all extend `RoundlyConsulting\Teams\Exceptions\TeamsException`).
+accept, while a multi-use invite survives until exhausted. Accepting is atomic: the invite row
+is re-read under a lock and the seat is claimed with a conditional update in the same
+transaction as the member add, so a single-use invite admits exactly one person and an
+`N`-seat link never admits `N + 1`, however many tabs or people race for it.
+
+Someone who is **already an active member** gets their membership back unchanged — no seat is
+consumed and their role is never overwritten (an owner opening a `member` link stays owner).
+An **expired** or removed membership is revived through the invite, with the invite's role.
+
+Accepting an **expired** invite throws `InviteExpiredException`; an **exhausted** (or already
+consumed) invite throws `InviteExhaustedException`; an email-targeted invite with a non-matching
+email throws `InviteEmailMismatchException`; a **revoked** invite, or
+`Teams::invites()->accept()` on an unknown code, throws `InviteNotFoundException`, as does
+resending or revoking another team's invite through `Teams::for($team)` (all extend
+`RoundlyConsulting\Teams\Exceptions\TeamsException`).
 
 Resending an invite fires `InviteResent`. The package ships a publishable accept-invite
 controller and route stub (`teams-stubs` tag) — it does not register routes itself, so you

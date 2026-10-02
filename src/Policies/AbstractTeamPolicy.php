@@ -18,10 +18,12 @@ abstract class AbstractTeamPolicy
     use HasTeamPolicies;
 
     /**
-     * Owners pass every ability; otherwise fall through to the per-method check.
+     * Owners pass every ability on their team; everything else falls through to
+     * the per-method check. Class-level abilities (`create`, `viewAny`) arrive
+     * with a class-string or no argument at all, and simply fall through.
      */
-    public function before(Model $user, string $ability, Team $team): ?bool
+    public function before(Model $user, string $ability, mixed $team = null): ?bool
     {
-        return $this->owns($user, $team) ? true : null;
+        return $team instanceof Team && $this->owns($user, $team) ? true : null;
     }
 }

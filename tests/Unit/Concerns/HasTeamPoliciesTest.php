@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Policies\AbstractTeamPolicy;
@@ -47,4 +48,27 @@ it('authorizes a permission through allows()', function (): void {
 
     expect(teamPolicy()->update($editor, $team))->toBeTrue()
         ->and(teamPolicy()->update($viewer, $team))->toBeFalse();
+});
+
+it('lets class-level abilities through before() to the policy method', function (): void {
+    $policy = new class extends AbstractTeamPolicy
+    {
+        public function create(Model $user): bool
+        {
+            return true;
+        }
+
+        public function viewAny(Model $user): bool
+        {
+            return false;
+        }
+    };
+
+    Gate::policy(Team::class, $policy::class);
+    $user = User::create();
+
+    expect($user->can('create', Team::class))->toBeTrue()
+        ->and($user->can('viewAny', Team::class))->toBeFalse()
+        ->and($policy->before($user, 'create', Team::class))->toBeNull()
+        ->and($policy->before($user, 'create'))->toBeNull();
 });

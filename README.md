@@ -683,8 +683,9 @@ php artisan teams:policy {name}         # scaffold a team-scoped policy (--force
 ### Policies
 
 `teams:policy` writes a policy extending `RoundlyConsulting\Teams\Policies\AbstractTeamPolicy`,
-whose `before()` grants every ability to the team owner. The `HasTeamPolicies` concern keeps
-hand-written policies terse:
+whose `before()` grants every ability on a team to its owner. Class-level abilities
+(`$user->can('create', Team::class)`, `viewAny`) carry no team, so `before()` lets them through
+to your policy method. The `HasTeamPolicies` concern keeps hand-written policies terse:
 
 ```php
 use Illuminate\Database\Eloquent\Model;

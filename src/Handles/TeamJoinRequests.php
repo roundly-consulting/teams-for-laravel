@@ -15,6 +15,7 @@ use RoundlyConsulting\Teams\DataTransferObjects\RequestToJoinData;
 use RoundlyConsulting\Teams\DataTransferObjects\RespondToJoinRequestData;
 use RoundlyConsulting\Teams\Enums\TeamOperation;
 use RoundlyConsulting\Teams\Exceptions\JoinRequestNotFoundException;
+use RoundlyConsulting\Teams\Exceptions\JoinRequestNotPendingException;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
@@ -105,8 +106,10 @@ final readonly class TeamJoinRequests
     /**
      * Approve a pending request, adding the requester as a member. `$role` defaults
      * to the requested role, then the team's default role, then `teams.roles.default`.
+     * A requester who already holds an active membership keeps it unchanged.
      *
      * @throws JoinRequestNotFoundException when the request belongs to another team
+     * @throws JoinRequestNotPendingException when the request was already resolved
      */
     public function approve(JoinRequest $request, Model $by, ?string $role = null): Member
     {
@@ -124,7 +127,10 @@ final readonly class TeamJoinRequests
     }
 
     /**
+     * Deny a pending request.
+     *
      * @throws JoinRequestNotFoundException when the request belongs to another team
+     * @throws JoinRequestNotPendingException when the request was already resolved
      */
     public function deny(JoinRequest $request, Model $by): JoinRequest
     {

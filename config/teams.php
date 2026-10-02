@@ -105,7 +105,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | "prune_after" is the relative interval, measured from a membership's
-    | expiry, after which "teams:members:prune" force-deletes the audit row.
+    | expiry, after which "teams:members:prune" (or "php artisan model:prune")
+    | force-deletes the audit row, firing MembershipExpired for each.
     | "expiring_within" is the default window (in days) for the
     | "teams:members:expiring" report and the MembershipExpiringSoon event.
     |
@@ -122,8 +123,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Join requests are opt-in expiring: pass an "expiresAt" to
-    | Teams::requestToJoin() and "teams:join-requests:prune" auto-declines any
-    | pending request whose expiry has passed (firing JoinRequestExpired). A
+    | Teams::for($team)->joinRequests()->open($user, expiresAt: ...) and
+    | "teams:join-requests:prune" auto-declines any pending request whose
+    | expiry has passed (firing JoinRequestExpired). A
     | null expiry never lapses, preserving the original behaviour. "prune_after"
     | is the relative interval, measured from a request's last update, after
     | which "php artisan model:prune" force-deletes resolved (non-pending) rows.

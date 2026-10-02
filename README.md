@@ -156,7 +156,7 @@ return [
 | `roles.cache.ttl`                | `int`          | `3600`               | `TEAMS_ROLES_CACHE_TTL`        | Cache lifetime in seconds.                                                       |
 | `invites.expires_after`          | `string`       | `7 days`             | `TEAMS_INVITES_EXPIRES_AFTER`  | Relative interval used as the default invite expiry when none is supplied.       |
 | `invites.code_length`            | `int`          | `32`                 | `TEAMS_INVITES_CODE_LENGTH`    | Length of the generated random invite code.                                      |
-| `members.prune_after`            | `string`       | `30 days`            | `TEAMS_MEMBERS_PRUNE_AFTER`    | Interval after a membership's expiry before `teams:members:prune` deletes it.     |
+| `members.prune_after`            | `string`       | `30 days`            | `TEAMS_MEMBERS_PRUNE_AFTER`    | Interval after a membership's expiry before `teams:members:prune` / `model:prune` deletes it. |
 | `members.expiring_within`        | `int`          | `7`                  | `TEAMS_MEMBERS_EXPIRING_WITHIN` | Default window (days) for `teams:members:expiring` and `MembershipExpiringSoon`. |
 | `join_requests.prune_after`      | `string`       | `30 days`            | `TEAMS_JOIN_REQUESTS_PRUNE_AFTER` | Interval after a resolved request's update before `model:prune` deletes it.    |
 | `gate.register`                  | `bool`         | `true`               | `TEAMS_REGISTER_GATE`          | Register Laravel Gate abilities and Blade directives for team permissions.       |

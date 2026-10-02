@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Database\Factories\MemberFactory;
+use RoundlyConsulting\Teams\Events\MembershipExpired;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 use RoundlyConsulting\Teams\Roles\Role;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
@@ -159,14 +160,27 @@ class Member extends Model
         return app(TeamsManager::class)->for($team)->members()->remove($member);
     }
 
-    /** @return Builder<Member> */
+    /**
+     * Memberships whose expiry passed more than `teams.members.prune_after` ago —
+     * collected by `php artisan model:prune` and by `Teams::members()->prune()`.
+     *
+     * @return Builder<static>
+     */
     public function prunable(): Builder
     {
         /** @var string $after */
         $after = config('teams.members.prune_after', '30 days');
 
-        return self::query()
+        return static::query()
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->sub($after));
+    }
+
+    /**
+     * Announce each pruned membership, whichever path prunes it.
+     */
+    protected function pruning(): void
+    {
+        MembershipExpired::dispatch($this);
     }
 }

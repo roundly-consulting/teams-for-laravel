@@ -14,9 +14,17 @@ use Illuminate\Support\Facades\Route;
 | (e.g. in routes/web.php). The {invite} parameter binds on the invite code
 | because Invite::getRouteKeyName() returns "code".
 |
+| GET only SHOWS the invite: a link in an email — or an <img> on someone
+| else's site — must never change state. Accepting is a POST, which the "web"
+| group protects with its CSRF check. "verified" keeps unverified accounts out,
+| because an email-targeted invite trusts the account's email address.
+|
 */
 
-Route::middleware(['web', 'auth'])->group(function (): void {
-    Route::match(['get', 'post'], 'teams/invites/{invite}', AcceptInviteController::class)
+Route::middleware(['web', 'auth', 'verified'])->group(function (): void {
+    Route::get('teams/invites/{invite}', [AcceptInviteController::class, 'show'])
+        ->name('teams.invites.show');
+
+    Route::post('teams/invites/{invite}', [AcceptInviteController::class, 'store'])
         ->name('teams.invites.accept');
 });

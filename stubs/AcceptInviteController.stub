@@ -4,22 +4,46 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Blade;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Invite;
 
 class AcceptInviteController extends Controller
 {
     /**
-     * Accept an invite resolved via route-model binding on its code.
+     * Show the invite with a confirmation form. Never accepts it: GET must not
+     * change state. Swap the inline template for your own view.
      */
-    public function __invoke(Request $request, Invite $invite): RedirectResponse
+    public function show(Invite $invite): Response
+    {
+        return response(Blade::render(<<<'BLADE'
+            <form method="POST" action="{{ route('teams.invites.accept', $invite) }}">
+                @csrf
+                <p>Join {{ $invite->team?->name }} as {{ $invite->role }}?</p>
+                <button type="submit">Accept invite</button>
+            </form>
+            BLADE, ['invite' => $invite]));
+    }
+
+    /**
+     * Accept the invite (POST, CSRF-protected by the "web" group). Only a VERIFIED
+     * email address is offered to an email-targeted invite — an unverified one
+     * proves nothing, so such an invite is then refused.
+     */
+    public function store(Request $request, Invite $invite): RedirectResponse
     {
         $user = $request->user();
 
-        Teams::invites()->accept($invite, $user, email: $user->email);
+        $email = $user instanceof MustVerifyEmail && $user->hasVerifiedEmail()
+            ? $user->getEmailForVerification()
+            : null;
 
-        return redirect()->route('teams.show', $invite->team);
+        $member = Teams::invites()->accept($invite, $user, email: $email);
+
+        return redirect()->route('teams.show', $member->team_id);
     }
 }

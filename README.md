@@ -520,7 +520,12 @@ resending or revoking another team's invite through `Teams::for($team)` (all ext
 
 Resending an invite fires `InviteResent`. The package ships a publishable accept-invite
 controller and route stub (`teams-stubs` tag) — it does not register routes itself, so you
-control the URLs.
+control the URLs. The stub never changes state on `GET`: `GET teams/invites/{code}` only shows
+a confirmation form, and accepting is a CSRF-protected `POST` — so a link preview or an
+`<img>` on another site cannot make a signed-in user join a team. Both routes sit behind
+`['web', 'auth', 'verified']`, and the controller offers the account's email to an
+email-targeted invite only once that address is verified (`MustVerifyEmail`); otherwise such an
+invite is refused.
 
 ### Join requests
 

@@ -17,6 +17,10 @@ return new class extends Migration
             // exists so the "current team" reader trait has something to read. A real host
             // would not necessarily constrain it either.
             $table->foreignId('team_id')->nullable();
+
+            // For the accept-invite stub's verified-email check.
+            $table->string('email')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
         });
     }
 };

@@ -115,9 +115,9 @@ return [
         'owner' => 'owner',
         'admin' => 'admin',
         'default' => env('TEAMS_DEFAULT_ROLE', 'member'),
-        'per_team' => (bool) env('TEAMS_PER_TEAM_ROLES', false),
+        'per_team' => env('TEAMS_PER_TEAM_ROLES', false),
         'cache' => [
-            'enabled' => (bool) env('TEAMS_ROLES_CACHE', false),
+            'enabled' => env('TEAMS_ROLES_CACHE', false),
             'store' => env('TEAMS_ROLES_CACHE_STORE'),
             'key' => env('TEAMS_ROLES_CACHE_KEY', 'teams.roles'),
             'ttl' => (int) env('TEAMS_ROLES_CACHE_TTL', 3600),
@@ -139,13 +139,13 @@ return [
     ],
 
     'approvals' => [
-        'enabled' => (bool) env('TEAMS_APPROVALS', false),
+        'enabled' => env('TEAMS_APPROVALS', false),
         'rule' => env('TEAMS_APPROVALS_RULE', 'unanimous'),
         'quorum' => env('TEAMS_APPROVALS_QUORUM') !== null ? (int) env('TEAMS_APPROVALS_QUORUM') : null,
     ],
 
     'gate' => [
-        'register' => (bool) env('TEAMS_REGISTER_GATE', true),
+        'register' => env('TEAMS_REGISTER_GATE', true),
         'prefix' => env('TEAMS_GATE_PREFIX', 'teams'),
         'owner_ability' => env('TEAMS_GATE_OWNER_ABILITY', 'owner'),
     ],
@@ -164,7 +164,7 @@ return [
 | `models.invite`                  | `class-string` | `Invite::class`      | —                              | Model used for team invites.                                                      |
 | `models.team_role`               | `class-string` | `TeamRole::class`    | —                              | Model used for per-team role overrides.                                          |
 | `models.join_request`            | `class-string` | `JoinRequest::class` | —                              | Model used for join requests.                                                    |
-| `key_type`                       | `string`       | `bigint`             | `TEAMS_KEY_TYPE`               | Key type of the polymorphic `owner` / `member` / `invited_by` / `requester` / `responded_by` columns: `bigint`, `uuid` or `ulid` (anything else falls back to `bigint`). Read when the migrations run — set it before migrating. |
+| `key_type`                       | `string`       | `bigint`             | `TEAMS_KEY_TYPE`               | Key type of the polymorphic `owner` / `member` / `invited_by` / `requester` / `responded_by` columns: `bigint`, `uuid` or `ulid` (anything else throws `InvalidConfigurationException`). Read when the migrations run — set it before migrating. |
 | `roles.provider`                 | `string`       | `array`              | `TEAMS_ROLES_PROVIDER`         | Role storage driver: `array` (in code) or `database` (persisted).                |
 | `roles.owner`                    | `string`       | `owner`              | —                              | Role key granted to a team's creator/owner.                                      |
 | `roles.admin`                    | `string`       | `admin`              | —                              | Role a previous owner is demoted to when ownership is transferred.               |
@@ -180,12 +180,17 @@ return [
 | `members.expiring_within`        | `int`          | `7`                  | `TEAMS_MEMBERS_EXPIRING_WITHIN` | Default window (days) for `teams:members:expiring` and `MembershipExpiringSoon`. |
 | `join_requests.prune_after`      | `string`       | `30 days`            | `TEAMS_JOIN_REQUESTS_PRUNE_AFTER` | Interval after a resolved request's update before `model:prune` deletes it.    |
 | `approvals.enabled`              | `bool`         | `false`              | `TEAMS_APPROVALS`              | Route join requests staged with `requireApprovalFrom()` through the approvals engine (see [Governed join-request sign-off](#governed-join-request-sign-off-approvals)). |
-| `approvals.rule`                 | `string`       | `unanimous`          | `TEAMS_APPROVALS_RULE`         | Default `ApprovalRule` value when the handle sets none: `unanimous`, `quorum`, `any` or `weighted` (unknown values fall back to `unanimous`). |
+| `approvals.rule`                 | `string`       | `unanimous`          | `TEAMS_APPROVALS_RULE`         | Default `ApprovalRule` value when the handle sets none: `unanimous`, `quorum`, `any` or `weighted` (anything else throws `InvalidConfigurationException`). |
 | `approvals.quorum`               | `?int`         | `null`               | `TEAMS_APPROVALS_QUORUM`       | Default quorum when the handle sets none.                                         |
 | `gate.register`                  | `bool`         | `true`               | `TEAMS_REGISTER_GATE`          | Register Laravel Gate abilities and Blade directives for team permissions.       |
 | `gate.prefix`                    | `string`       | `teams`              | `TEAMS_GATE_PREFIX`            | Ability-name prefix, e.g. `teams.manage-billing`.                                |
 | `gate.owner_ability`             | `string`       | `owner`              | `TEAMS_GATE_OWNER_ABILITY`     | Short ability that resolves to team ownership: `teams.owner`.                     |
 | `notifications.queue_connection` | `?string`      | `null`               | `TEAMS_NOTIFY_CONNECTION`      | Queue connection consumed by the publishable event-subscriber stub.              |
+
+The `bool` keys take env strings as they come: `true`/`1`/`on`/`yes` switch a flag on and
+`false`/`0`/`off`/`no` (or an empty value) switch it off. Anything else — a typo such as
+`TEAMS_APPROVALS=disabled` — throws `InvalidConfigurationException` instead of quietly
+reading as the default.
 
 Once the migrations above are published and run, the package works with zero configuration.
 

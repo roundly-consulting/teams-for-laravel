@@ -66,6 +66,10 @@ return [
     | "cache" wraps the "database" provider in a cache layer that is flushed on
     | every role mutation. It is off by default.
     |
+    | "provider" must be "array" or "database", the role keys non-empty strings
+    | and "ttl" 1-31536000 seconds; anything else throws an
+    | InvalidConfigurationException rather than falling back to a default.
+    |
     */
 
     'roles' => [
@@ -78,7 +82,7 @@ return [
             'enabled' => env('TEAMS_ROLES_CACHE', false),
             'store' => env('TEAMS_ROLES_CACHE_STORE'),
             'key' => env('TEAMS_ROLES_CACHE_KEY', 'teams.roles'),
-            'ttl' => (int) env('TEAMS_ROLES_CACHE_TTL', 3600),
+            'ttl' => env('TEAMS_ROLES_CACHE_TTL', 3600),
         ],
     ],
 
@@ -87,9 +91,9 @@ return [
     | Invites
     |--------------------------------------------------------------------------
     |
-    | "expires_after" is a relative interval used as the default invite expiry
-    | when none is supplied, and "code_length" is the length of the generated
-    | random invite code. Invites default to a single use (max_uses = 1) so an
+    | "expires_after" is a positive relative interval (e.g. "7 days") used as
+    | the default invite expiry when none is supplied, and "code_length" is the
+    | length (1-255) of the generated random invite code. Invites default to a single use (max_uses = 1) so an
     | accepted invite is consumed and deleted; pass a higher "maxUses" to issue
     | multi-seat links, or null for unlimited.
     |
@@ -97,7 +101,7 @@ return [
 
     'invites' => [
         'expires_after' => env('TEAMS_INVITES_EXPIRES_AFTER', '7 days'),
-        'code_length' => (int) env('TEAMS_INVITES_CODE_LENGTH', 32),
+        'code_length' => env('TEAMS_INVITES_CODE_LENGTH', 32),
     ],
 
     /*
@@ -115,7 +119,7 @@ return [
 
     'members' => [
         'prune_after' => env('TEAMS_MEMBERS_PRUNE_AFTER', '30 days'),
-        'expiring_within' => (int) env('TEAMS_MEMBERS_EXPIRING_WITHIN', 7),
+        'expiring_within' => env('TEAMS_MEMBERS_EXPIRING_WITHIN', 7),
     ],
 
     /*
@@ -160,7 +164,7 @@ return [
     'approvals' => [
         'enabled' => env('TEAMS_APPROVALS', false),
         'rule' => env('TEAMS_APPROVALS_RULE', 'unanimous'),
-        'quorum' => env('TEAMS_APPROVALS_QUORUM') !== null ? (int) env('TEAMS_APPROVALS_QUORUM') : null,
+        'quorum' => env('TEAMS_APPROVALS_QUORUM'),
     ],
 
     /*

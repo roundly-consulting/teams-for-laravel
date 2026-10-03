@@ -18,6 +18,7 @@ use RoundlyConsulting\Approvals\Traits\RequiresApproval;
 use RoundlyConsulting\Teams\Database\Factories\JoinRequestFactory;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Support\TeamModel;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 /**
  * @property int $id
@@ -123,11 +124,8 @@ class JoinRequest extends Model implements RequiresApprovalInterface
     /** @return Builder<JoinRequest> */
     public function prunable(): Builder
     {
-        /** @var string $after */
-        $after = config('teams.join_requests.prune_after', '30 days');
-
         return self::query()
             ->where('status', '!=', JoinRequestStatus::Pending->value)
-            ->where('updated_at', '<=', now()->sub($after));
+            ->where('updated_at', '<=', now()->sub(TeamsConfig::joinRequestsPruneAfter()));
     }
 }

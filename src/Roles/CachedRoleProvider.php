@@ -9,6 +9,7 @@ use Illuminate\Cache\TaggableStore;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 /**
  * Caches an inner RoleProvider's role map in the shared cache and flushes it on
@@ -96,10 +97,7 @@ final class CachedRoleProvider implements RoleProvider
 
     private function store(): Repository
     {
-        /** @var string|null $name */
-        $name = config('teams.roles.cache.store');
-
-        return Cache::store($name);
+        return Cache::store(TeamsConfig::cacheStore());
     }
 
     /**
@@ -117,14 +115,11 @@ final class CachedRoleProvider implements RoleProvider
 
     private function key(): string
     {
-        /** @var string $key */
-        $key = config('teams.roles.cache.key', 'teams.roles');
-
-        return $key;
+        return TeamsConfig::cacheKey();
     }
 
     private function ttl(): int
     {
-        return (int) config('teams.roles.cache.ttl', 3600);
+        return TeamsConfig::cacheTtl();
     }
 }

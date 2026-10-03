@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use RoundlyConsulting\Teams\Events\MembershipExpiringSoon;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Support\MemberModel;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class DispatchExpiringMembershipsAction
 {
@@ -21,7 +22,7 @@ final readonly class DispatchExpiringMembershipsAction
      */
     public function execute(?int $withinDays = null, bool $notify = true): Collection
     {
-        $withinDays ??= (int) config('teams.members.expiring_within', 7);
+        $withinDays ??= TeamsConfig::membersExpiringWithin();
 
         /** @var Collection<int, Member> $members */
         $members = MemberModel::query()->expiringWithin($withinDays)->get();

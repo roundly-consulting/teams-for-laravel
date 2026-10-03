@@ -9,6 +9,7 @@ use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Support\TeamModel;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class CreateTeamAction
 {
@@ -32,12 +33,9 @@ final readonly class CreateTeamAction
         $team = TeamModel::query()->create($attributes);
 
         if ($data->owner !== null) {
-            /** @var string $ownerRole */
-            $ownerRole = config('teams.roles.owner', 'owner');
-
             $this->addMember->execute($team, new AddMemberData(
                 member: $data->owner,
-                role: $ownerRole,
+                role: TeamsConfig::ownerRole(),
             ));
         }
 

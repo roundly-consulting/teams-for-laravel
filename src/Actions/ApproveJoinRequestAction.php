@@ -15,6 +15,7 @@ use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Options\DefaultMemberRole;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class ApproveJoinRequestAction
 {
@@ -78,12 +79,9 @@ final readonly class ApproveJoinRequestAction
      */
     private function role(JoinRequest $request, Team $team, RespondToJoinRequestData $data): string
     {
-        /** @var string $configDefault */
-        $configDefault = config('teams.roles.default', 'member');
-
         /** @var string|null $teamDefault */
         $teamDefault = Options::get(DefaultMemberRole::class, $team);
 
-        return $data->role ?? $request->requested_role ?? $teamDefault ?? $configDefault;
+        return $data->role ?? $request->requested_role ?? $teamDefault ?? TeamsConfig::defaultRole();
     }
 }

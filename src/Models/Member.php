@@ -21,6 +21,7 @@ use RoundlyConsulting\Teams\Roles\Role;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
 use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Support\TeamModel;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 use RoundlyConsulting\Teams\TeamsManager;
 
 /**
@@ -169,12 +170,9 @@ class Member extends Model
      */
     public function prunable(): Builder
     {
-        /** @var string $after */
-        $after = config('teams.members.prune_after', '30 days');
-
         return static::query()
             ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->sub($after));
+            ->where('expires_at', '<=', now()->sub(TeamsConfig::membersPruneAfter()));
     }
 
     /**

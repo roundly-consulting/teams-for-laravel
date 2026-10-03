@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams;
 
+use Closure;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use RoundlyConsulting\Approvals\Enums\ApprovalRule;
 use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBladeDirectives;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\PackageToolkit\Support\Config;
@@ -36,6 +39,7 @@ use RoundlyConsulting\Teams\Support\JoinRequestModel;
 use RoundlyConsulting\Teams\Support\MemberModel;
 use RoundlyConsulting\Teams\Support\TeamModel;
 use RoundlyConsulting\Teams\Support\TeamRoleModel;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final class TeamsServiceProvider extends PackageServiceProvider
 {
@@ -95,7 +99,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
         // forgets scoped instances before every job and request, so a permission
         // revoked by another process is honoured from the next one on.
         $this->app->scoped(RoleProvider::class, function (Application $app): RoleProvider {
-            if (config('teams.roles.provider') !== 'database') {
+            if (TeamsConfig::roleProvider() !== TeamsConfig::PROVIDER_DATABASE) {
                 return $app->make(InMemoryRoleProvider::class);
             }
 
@@ -140,11 +144,8 @@ final class TeamsServiceProvider extends PackageServiceProvider
             return;
         }
 
-        /** @var string $prefix */
-        $prefix = config('teams.gate.prefix', 'teams');
-
-        /** @var string $ownerAbility */
-        $ownerAbility = config('teams.gate.owner_ability', 'owner');
+        $prefix = TeamsConfig::gatePrefix();
+        $ownerAbility = TeamsConfig::gateOwnerAbility();
 
         Gate::before(function (Model $user, string $ability, array $arguments) use ($prefix, $ownerAbility): ?bool {
             if (! Str::startsWith($ability, $prefix.'.')) {
@@ -203,23 +204,23 @@ final class TeamsServiceProvider extends PackageServiceProvider
             'Invite model' => class_basename(InviteModel::class()),
             'Team role model' => class_basename(TeamRoleModel::class()),
             'Join request model' => class_basename(JoinRequestModel::class()),
-            'Role provider' => config('teams.roles.provider') === 'database' ? 'database' : 'array',
-            'Registered roles' => $this->countOf(count($this->app->make(RoleProvider::class)->all()), 'role'),
+            'Role provider' => self::orInvalid(static fn (): string => TeamsConfig::roleProvider()),
+            'Registered roles' => self::orInvalid(fn (): string => $this->countOf(count($this->app->make(RoleProvider::class)->all()), 'role')),
             'Registered permissions' => $this->countOf(count($this->app->make(PermissionRegistry::class)->all()), 'permission'),
             'Role keys' => $this->roleKeys(),
             'Per-team roles' => Config::boolean('teams.roles.per_team') ? 'ON' : 'OFF',
             'Role cache' => $this->roleCache(),
-            'Invites' => sprintf(
+            'Invites' => self::orInvalid(static fn (): string => sprintf(
                 'expire after %s, %d-char codes',
-                (string) config('teams.invites.expires_after', '7 days'),
-                (int) config('teams.invites.code_length', 32),
-            ),
-            'Members' => sprintf(
+                TeamsConfig::inviteExpiresAfter()->forHumans(),
+                TeamsConfig::inviteCodeLength(),
+            )),
+            'Members' => self::orInvalid(static fn (): string => sprintf(
                 'prune %s after expiry, %d-day expiry warning',
-                (string) config('teams.members.prune_after', '30 days'),
-                (int) config('teams.members.expiring_within', 7),
-            ),
-            'Join requests' => 'prune '.((string) config('teams.join_requests.prune_after', '30 days')).' after resolution',
+                TeamsConfig::membersPruneAfter()->forHumans(),
+                TeamsConfig::membersExpiringWithin(),
+            )),
+            'Join requests' => self::orInvalid(static fn (): string => 'prune '.TeamsConfig::joinRequestsPruneAfter()->forHumans().' after resolution'),
             'Approvals' => $this->approvals(),
             'Gate' => $this->gate(),
             'Notification queue' => config('teams.notifications.queue_connection') !== null ? 'SET' : 'DEFAULT',
@@ -236,11 +237,13 @@ final class TeamsServiceProvider extends PackageServiceProvider
      */
     private function roleKeys(): string
     {
-        $packaged = config('teams.roles.owner') === 'owner'
-            && config('teams.roles.admin') === 'admin'
-            && config('teams.roles.default') === 'member';
+        return self::orInvalid(static function (): string {
+            $packaged = TeamsConfig::ownerRole() === 'owner'
+                && TeamsConfig::adminRole() === 'admin'
+                && TeamsConfig::defaultRole() === 'member';
 
-        return $packaged ? 'DEFAULT' : 'CUSTOMISED';
+            return $packaged ? 'DEFAULT' : 'CUSTOMISED';
+        });
     }
 
     private function roleCache(): string
@@ -249,11 +252,11 @@ final class TeamsServiceProvider extends PackageServiceProvider
             return 'OFF';
         }
 
-        return sprintf(
+        return self::orInvalid(static fn (): string => sprintf(
             'ON (store %s, ttl %ds)',
-            config('teams.roles.cache.store') !== null ? 'SET' : 'DEFAULT',
-            (int) config('teams.roles.cache.ttl', 3600),
-        );
+            TeamsConfig::cacheStore() !== null ? 'SET' : 'DEFAULT',
+            TeamsConfig::cacheTtl(),
+        ));
     }
 
     private function approvals(): string
@@ -262,13 +265,11 @@ final class TeamsServiceProvider extends PackageServiceProvider
             return 'OFF';
         }
 
-        $quorum = config('teams.approvals.quorum');
-
-        return sprintf(
+        return self::orInvalid(static fn (): string => sprintf(
             'ON (rule %s, quorum %s)',
-            (string) config('teams.approvals.rule', 'unanimous'),
-            $quorum !== null ? (string) (int) $quorum : 'NONE',
-        );
+            Config::enum('teams.approvals.rule', ApprovalRule::class, ApprovalRule::Unanimous)->value,
+            TeamsConfig::approvalQuorum() ?? 'NONE',
+        ));
     }
 
     private function gate(): string
@@ -277,10 +278,25 @@ final class TeamsServiceProvider extends PackageServiceProvider
             return 'OFF';
         }
 
-        return sprintf(
+        return self::orInvalid(static fn (): string => sprintf(
             'ON (prefix %s, owner ability %s)',
-            config('teams.gate.prefix') !== 'teams' ? 'SET' : 'DEFAULT',
-            config('teams.gate.owner_ability') !== 'owner' ? 'SET' : 'DEFAULT',
-        );
+            TeamsConfig::gatePrefix() !== 'teams' ? 'SET' : 'DEFAULT',
+            TeamsConfig::gateOwnerAbility() !== 'owner' ? 'SET' : 'DEFAULT',
+        ));
+    }
+
+    /**
+     * The value a strict read produces, or INVALID when the host's config is malformed:
+     * `php artisan about` keeps rendering on a broken host, while the real read path throws.
+     *
+     * @param  Closure(): string  $read
+     */
+    private static function orInvalid(Closure $read): string
+    {
+        try {
+            return $read();
+        } catch (InvalidConfigurationException) {
+            return 'INVALID';
+        }
     }
 }

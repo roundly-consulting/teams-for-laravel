@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Teams\Commands;
 
 use Illuminate\Console\Command;
 use RoundlyConsulting\Teams\Models\Member;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 use RoundlyConsulting\Teams\TeamsManager;
 
 final class MembersExpiringCommand extends Command
@@ -58,9 +59,6 @@ final class MembersExpiringCommand extends Command
             return (int) $option;
         }
 
-        /** @var int $configured */
-        $configured = config('teams.members.expiring_within', 7);
-
-        return $configured;
+        return TeamsConfig::membersExpiringWithin();
     }
 }

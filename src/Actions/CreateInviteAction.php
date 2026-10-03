@@ -10,16 +10,15 @@ use RoundlyConsulting\Teams\DataTransferObjects\CreateInviteData;
 use RoundlyConsulting\Teams\Events\InviteCreated;
 use RoundlyConsulting\Teams\Models\Invite;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class CreateInviteAction
 {
     public function execute(Team $team, CreateInviteData $data): Invite
     {
-        /** @var int $codeLength */
-        $codeLength = config('teams.invites.code_length', 32);
+        $codeLength = TeamsConfig::inviteCodeLength();
 
-        $expiresAt = $data->expiresAt
-            ?? now()->add(config('teams.invites.expires_after', '7 days'));
+        $expiresAt = $data->expiresAt ?? now()->add(TeamsConfig::inviteExpiresAfter());
 
         $attributes = [
             'meta' => new Collection($data->meta),

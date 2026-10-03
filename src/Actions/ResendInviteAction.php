@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Teams\Actions;
 use Illuminate\Support\Str;
 use RoundlyConsulting\Teams\Events\InviteResent;
 use RoundlyConsulting\Teams\Models\Invite;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class ResendInviteAction
 {
@@ -16,12 +17,9 @@ final readonly class ResendInviteAction
      */
     public function execute(Invite $invite): Invite
     {
-        /** @var int $codeLength */
-        $codeLength = config('teams.invites.code_length', 32);
-
         $invite->update([
-            'code' => Str::random($codeLength),
-            'expires_at' => now()->add(config('teams.invites.expires_after', '7 days')),
+            'code' => Str::random(TeamsConfig::inviteCodeLength()),
+            'expires_at' => now()->add(TeamsConfig::inviteExpiresAfter()),
         ]);
 
         InviteResent::dispatch($invite);

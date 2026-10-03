@@ -20,6 +20,7 @@ use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Options\DefaultMemberRole;
 use RoundlyConsulting\Teams\Options\JoinPolicy as JoinPolicyOption;
 use RoundlyConsulting\Teams\Options\RequireApprovalToJoin;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class RequestToJoinAction
 {
@@ -115,10 +116,7 @@ final readonly class RequestToJoinAction
 
     private function configuredQuorum(): ?int
     {
-        /** @var int|null $quorum */
-        $quorum = config('teams.approvals.quorum');
-
-        return $quorum;
+        return TeamsConfig::approvalQuorum();
     }
 
     private function requiresApproval(RequestToJoinData $data): bool
@@ -132,13 +130,10 @@ final readonly class RequestToJoinAction
      */
     private function defaultRole(RequestToJoinData $data): string
     {
-        /** @var string $configDefault */
-        $configDefault = config('teams.roles.default', 'member');
-
         /** @var string|null $teamDefault */
         $teamDefault = Options::get(DefaultMemberRole::class, $data->team);
 
-        return $teamDefault ?? $configDefault;
+        return $teamDefault ?? TeamsConfig::defaultRole();
     }
 
     private function asksForDefaultRole(RequestToJoinData $data, string $defaultRole): bool

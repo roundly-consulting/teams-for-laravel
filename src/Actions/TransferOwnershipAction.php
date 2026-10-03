@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Events\TeamOwnershipTransferred;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class TransferOwnershipAction
 {
@@ -26,11 +27,8 @@ final readonly class TransferOwnershipAction
      */
     public function execute(Team $team, Model $newOwner): Team
     {
-        /** @var string $ownerRole */
-        $ownerRole = config('teams.roles.owner', 'owner');
-
-        /** @var string $adminRole */
-        $adminRole = config('teams.roles.admin', 'admin');
+        $ownerRole = TeamsConfig::ownerRole();
+        $adminRole = TeamsConfig::adminRole();
 
         return $team->getConnection()->transaction(function () use ($team, $newOwner, $ownerRole, $adminRole): Team {
             $previousOwner = $team->owner;

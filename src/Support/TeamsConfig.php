@@ -38,9 +38,15 @@ final class TeamsConfig
     private const int MAX_EXPIRING_DAYS = 3660;
 
     /**
-     * The `team_invites.code` column is a 255-character string.
+     * The shortest generated invite code accepted: a guessable code is a free seat.
      */
-    private const int MAX_CODE_LENGTH = 255;
+    private const int MIN_CODE_LENGTH = 8;
+
+    /**
+     * The longest generated invite code accepted: still comfortable in a URL (codes are
+     * URL-safe alphanumerics), and well inside the 255-character `team_invites.code` column.
+     */
+    private const int MAX_CODE_LENGTH = 128;
 
     /**
      * `array` or `database`; not set means `array`.
@@ -87,11 +93,11 @@ final class TeamsConfig
     }
 
     /**
-     * Characters in a generated invite code: 1–255, 32 when not set.
+     * Characters in a generated invite code: 8–128, 32 when not set.
      */
     public static function inviteCodeLength(): int
     {
-        return Config::integer('teams.invites.code_length', 32, min: 1, max: self::MAX_CODE_LENGTH);
+        return Config::integer('teams.invites.code_length', 32, min: self::MIN_CODE_LENGTH, max: self::MAX_CODE_LENGTH);
     }
 
     /**

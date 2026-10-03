@@ -175,7 +175,7 @@ return [
 | `roles.cache.key`                | `string`       | `teams.roles`        | `TEAMS_ROLES_CACHE_KEY`        | Cache key for the role map.                                                      |
 | `roles.cache.ttl`                | `int`          | `3600`               | `TEAMS_ROLES_CACHE_TTL`        | Cache lifetime in seconds, 1–31536000.                                           |
 | `invites.expires_after`          | `string`       | `7 days`             | `TEAMS_INVITES_EXPIRES_AFTER`  | Positive relative interval (`7 days`, `P7D`) used as the default invite expiry when none is supplied. |
-| `invites.code_length`            | `int`          | `32`                 | `TEAMS_INVITES_CODE_LENGTH`    | Length of the generated random invite code, 1–255.                               |
+| `invites.code_length`            | `int`          | `32`                 | `TEAMS_INVITES_CODE_LENGTH`    | Length of the generated random invite code, 8–128 (URL-safe alphanumerics).      |
 | `members.prune_after`            | `string`       | `30 days`            | `TEAMS_MEMBERS_PRUNE_AFTER`    | Zero or positive interval after a membership's expiry before `teams:members:prune` / `model:prune` deletes it. |
 | `members.expiring_within`        | `int`          | `7`                  | `TEAMS_MEMBERS_EXPIRING_WITHIN` | Default window (days, 1–3660) for `teams:members:expiring` and `MembershipExpiringSoon`. |
 | `join_requests.prune_after`      | `string`       | `30 days`            | `TEAMS_JOIN_REQUESTS_PRUNE_AFTER` | Zero or positive interval after a resolved request's update before `model:prune` deletes it. |
@@ -193,8 +193,9 @@ that is not set (absent, `null`, or blank: `''` or whitespace, as a bare `TEAMS_
 line gives) takes its default. Anything else throws `InvalidConfigurationException` naming
 the key instead of quietly reading as a default: a mistyped switch (`TEAMS_APPROVALS=disabled`)
 or role provider (`databse`), an integer that isn't one (`'abc'`, `'7.5'`) or is out of
-range, an interval Carbon can't parse (`seven days`) or that is negative, and a non-string
-role key, cache store or key, gate prefix or owner ability. `php artisan about` shows such a value as `INVALID`.
+range (an invite code shorter than 8 or longer than 128), an interval Carbon can't parse
+(`seven days`) or that is negative, and a non-string role key, cache store or key, gate
+prefix or owner ability. `php artisan about` shows such a value as `INVALID`.
 
 Once the migrations above are published and run, the package works with zero configuration.
 

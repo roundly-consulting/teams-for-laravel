@@ -95,9 +95,11 @@ return [
     |
     | "expires_after" is a positive relative interval (e.g. "7 days") used as
     | the default invite expiry when none is supplied, and "code_length" is the
-    | length (1-255) of the generated random invite code. Invites default to a single use (max_uses = 1) so an
-    | accepted invite is consumed and deleted; pass a higher "maxUses" to issue
-    | multi-seat links, or null for unlimited.
+    | length (8-128) of the generated random invite code: URL-safe
+    | alphanumerics, so even the longest code sits comfortably in a link.
+    | Invites default to a single use (max_uses = 1) so an accepted invite is
+    | consumed and deleted; pass a higher "maxUses" to issue multi-seat links,
+    | or null for unlimited.
     |
     */
 

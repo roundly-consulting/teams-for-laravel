@@ -181,7 +181,13 @@ it('refuses a junk or out-of-range invite code length (strict config)', function
     expect(fn () => Teams::for($team)->invites()->create('member'))
         ->toThrow(InvalidConfigurationException::class, 'teams.invites.code_length')
         ->and($team->invites()->count())->toBe(0);
-})->with(['word' => 'abc', 'decimal' => '5.5', 'zero' => 0, 'over the column' => 256]);
+})->with(['word' => 'abc', 'decimal' => '5.5', 'zero' => 0, 'below the minimum' => 7, 'above the maximum' => 129, 'over the column' => 256]);
+
+it('accepts an invite code length at either end of 8-128 (strict config)', function (int|string $length, int $expected): void {
+    config()->set('teams.invites.code_length', $length);
+
+    expect(Teams::for(Team::factory()->create())->invites()->create('member')->code)->toHaveLength($expected);
+})->with(['minimum' => [8, 8], 'maximum' => [128, 128], 'env string' => ['128', 128]]);
 
 it('refuses a junk code length on resend too (strict config)', function (): void {
     $team = Team::factory()->create();

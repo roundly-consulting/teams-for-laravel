@@ -188,13 +188,13 @@ return [
 | `notifications.queue_connection` | `?string`      | `null`               | `TEAMS_NOTIFY_CONNECTION`      | Queue connection consumed by the publishable event-subscriber stub.              |
 
 The `bool` keys take env strings as they come: `true`/`1`/`on`/`yes` switch a flag on and
-`false`/`0`/`off`/`no` (or an empty value) switch it off; the `int` keys take integer strings
-(`'3600'`). A key that is absent or `null` takes its default. Anything else throws
-`InvalidConfigurationException` naming the key instead of quietly reading as a default: a
-mistyped switch (`TEAMS_APPROVALS=disabled`) or role provider (`databse`), an integer that
-isn't one (`'abc'`, `'7.5'`, `''`) or is out of range, an interval Carbon can't parse
-(`seven days`) or that is negative, and a blank or non-string role key, cache store or key,
-gate prefix or owner ability. `php artisan about` shows such a value as `INVALID`.
+`false`/`0`/`off`/`no` switch it off; the `int` keys take integer strings (`'3600'`). A key
+that is not set (absent, `null`, or blank: `''` or whitespace, as a bare `TEAMS_APPROVALS=`
+line gives) takes its default. Anything else throws `InvalidConfigurationException` naming
+the key instead of quietly reading as a default: a mistyped switch (`TEAMS_APPROVALS=disabled`)
+or role provider (`databse`), an integer that isn't one (`'abc'`, `'7.5'`) or is out of
+range, an interval Carbon can't parse (`seven days`) or that is negative, and a non-string
+role key, cache store or key, gate prefix or owner ability. `php artisan about` shows such a value as `INVALID`.
 
 Once the migrations above are published and run, the package works with zero configuration.
 

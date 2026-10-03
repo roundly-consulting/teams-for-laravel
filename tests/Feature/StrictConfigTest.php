@@ -16,6 +16,7 @@ use RoundlyConsulting\Teams\Roles\CachedRoleProvider;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
 use RoundlyConsulting\Teams\Roles\DatabaseRoleProvider;
 use RoundlyConsulting\Teams\Roles\InMemoryRoleProvider;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 use RoundlyConsulting\Teams\TeamsServiceProvider;
 use RoundlyConsulting\Teams\Tests\User;
 
@@ -122,16 +123,16 @@ it('refuses an unknown default approval rule (strict config)', function (): void
         ->toThrow(InvalidConfigurationException::class, 'Configuration value [teams.approvals.rule]');
 });
 
-it('takes the unanimous rule when no default rule is configured', function (): void {
+it('takes the unanimous rule when no default rule is set', function (?string $rule): void {
     config()->set('teams.approvals.enabled', true);
-    config()->set('teams.approvals.rule', null);
+    config()->set('teams.approvals.rule', $rule);
 
     $team = Team::factory()->create();
 
     $request = Teams::for($team)->joinRequests()->requireApprovalFrom(User::create())->open(User::create());
 
     expect($request->approvalRequests()->first()?->rule)->toBe(ApprovalRule::Unanimous);
-});
+})->with(['absent' => null, 'blank' => '', 'whitespace' => '  ']);
 
 it('refuses to migrate on an unrecognized key type (strict config)', function (): void {
     config()->set('teams.key_type', 'nonsense');
@@ -164,14 +165,14 @@ it('refuses a mistyped role provider instead of using the array one (strict conf
 
     expect(fn () => app(RoleProvider::class))
         ->toThrow(InvalidConfigurationException::class, 'Configuration value [teams.roles.provider] must be one of [array, database]');
-})->with(['typo' => 'databse', 'wrong case' => 'Database', 'blank' => '']);
+})->with(['typo' => 'databse', 'wrong case' => 'Database', 'integer' => 1]);
 
-it('resolves the array role provider when none is configured (strict config)', function (): void {
-    config()->set('teams.roles.provider', null);
+it('resolves the array role provider when none is set (strict config)', function (?string $provider): void {
+    config()->set('teams.roles.provider', $provider);
     app()->forgetInstance(RoleProvider::class);
 
     expect(app(RoleProvider::class))->toBeInstanceOf(InMemoryRoleProvider::class);
-});
+})->with(['absent' => null, 'blank' => '', 'whitespace' => '  ']);
 
 it('refuses a junk or out-of-range invite code length (strict config)', function (mixed $length): void {
     config()->set('teams.invites.code_length', $length);
@@ -180,7 +181,7 @@ it('refuses a junk or out-of-range invite code length (strict config)', function
     expect(fn () => Teams::for($team)->invites()->create('member'))
         ->toThrow(InvalidConfigurationException::class, 'teams.invites.code_length')
         ->and($team->invites()->count())->toBe(0);
-})->with(['word' => 'abc', 'decimal' => '5.5', 'blank' => '', 'zero' => 0, 'over the column' => 256]);
+})->with(['word' => 'abc', 'decimal' => '5.5', 'zero' => 0, 'over the column' => 256]);
 
 it('refuses a junk code length on resend too (strict config)', function (): void {
     $team = Team::factory()->create();
@@ -191,11 +192,11 @@ it('refuses a junk code length on resend too (strict config)', function (): void
         ->toThrow(InvalidConfigurationException::class, 'teams.invites.code_length');
 });
 
-it('generates a 32-character code when the length is absent (strict config)', function (): void {
-    config()->set('teams.invites.code_length', null);
+it('generates a 32-character code when the length is not set (strict config)', function (?string $length): void {
+    config()->set('teams.invites.code_length', $length);
 
     expect(Teams::for(Team::factory()->create())->invites()->create('member')->code)->toHaveLength(32);
-});
+})->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);
 
 it('refuses a junk or non-positive invite expiry (strict config)', function (mixed $interval): void {
     config()->set('teams.invites.expires_after', $interval);
@@ -203,15 +204,15 @@ it('refuses a junk or non-positive invite expiry (strict config)', function (mix
 
     expect(fn () => Teams::for($team)->invites()->create('member'))
         ->toThrow(InvalidConfigurationException::class, 'teams.invites.expires_after');
-})->with(['word' => 'seven days', 'typo' => '7 dayz', 'bare number' => '30', 'zero' => '0 days', 'negative' => '-7 days', 'integer' => 7, 'blank' => '']);
+})->with(['word' => 'seven days', 'typo' => '7 dayz', 'bare number' => '30', 'zero' => '0 days', 'negative' => '-7 days', 'integer' => 7]);
 
-it('expires an invite after 7 days when the interval is absent (strict config)', function (): void {
-    config()->set('teams.invites.expires_after', null);
+it('expires an invite after 7 days when the interval is not set (strict config)', function (?string $interval): void {
+    config()->set('teams.invites.expires_after', $interval);
     $this->freezeSecond();
 
     expect(Teams::for(Team::factory()->create())->invites()->create('member')->expires_at?->toDateTimeString())
         ->toBe(now()->addDays(7)->toDateTimeString());
-});
+})->with(['absent' => null, 'blank' => '', 'whitespace' => '  ']);
 
 it('refuses a junk or negative prune interval (strict config)', function (string $key, Closure $prunable, mixed $interval): void {
     config()->set($key, $interval);
@@ -220,7 +221,16 @@ it('refuses a junk or negative prune interval (strict config)', function (string
 })->with([
     'members' => ['teams.members.prune_after', fn () => (new Member)->prunable()],
     'join requests' => ['teams.join_requests.prune_after', fn () => (new JoinRequest)->prunable()],
-])->with(['word' => 'thirty days', 'negative' => '-30 days', 'integer' => 30, 'blank' => '']);
+])->with(['word' => 'thirty days', 'negative' => '-30 days', 'integer' => 30]);
+
+it('prunes 30 days on when the prune interval is not set (strict config)', function (string $key, Closure $window, ?string $interval): void {
+    config()->set($key, $interval);
+
+    expect($window()->totalDays)->toEqual(30);
+})->with([
+    'members' => ['teams.members.prune_after', fn () => TeamsConfig::membersPruneAfter()],
+    'join requests' => ['teams.join_requests.prune_after', fn () => TeamsConfig::joinRequestsPruneAfter()],
+])->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);
 
 it('accepts a zero prune interval (strict config)', function (): void {
     config()->set('teams.members.prune_after', '0 days');
@@ -237,6 +247,12 @@ it('refuses a junk or non-positive expiring window (strict config)', function (m
         ->toThrow(InvalidConfigurationException::class, 'teams.members.expiring_within');
 })->with(['word' => 'five', 'decimal' => '7.5', 'zero' => 0, 'negative' => '-1']);
 
+it('takes the 7-day expiring window when none is set (strict config)', function (?string $days): void {
+    config()->set('teams.members.expiring_within', $days);
+
+    expect(TeamsConfig::membersExpiringWithin())->toBe(7);
+})->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);
+
 it('refuses a junk or non-positive default quorum (strict config)', function (mixed $quorum): void {
     config()->set('teams.approvals.enabled', true);
     config()->set('teams.approvals.quorum', $quorum);
@@ -245,7 +261,19 @@ it('refuses a junk or non-positive default quorum (strict config)', function (mi
 
     expect(fn () => Teams::for($team)->joinRequests()->requireApprovalFrom(User::create())->open(User::create()))
         ->toThrow(InvalidConfigurationException::class, 'teams.approvals.quorum');
-})->with(['word' => 'two', 'zero' => 0, 'blank' => '']);
+})->with(['word' => 'two', 'zero' => 0, 'decimal' => '1.5']);
+
+it('sets no default quorum when none is set (strict config)', function (?string $quorum): void {
+    config()->set('teams.approvals.enabled', true);
+    config()->set('teams.approvals.quorum', $quorum);
+
+    $team = Team::factory()->create();
+    $request = Teams::for($team)->joinRequests()->requireApprovalFrom(collect([User::create(), User::create()]))->open(User::create());
+
+    expect(TeamsConfig::approvalQuorum())->toBeNull()
+        ->and($request->approvalRequests()->first()?->rule)->toBe(ApprovalRule::Unanimous)
+        ->and($request->approvalRequests()->first()?->required_approvers)->toBe(2);
+})->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);
 
 it('refuses a junk role cache ttl, store or key (strict config)', function (string $key, mixed $value): void {
     config()->set('teams.roles.provider', 'database');
@@ -258,22 +286,43 @@ it('refuses a junk role cache ttl, store or key (strict config)', function (stri
 })->with([
     'ttl word' => ['teams.roles.cache.ttl', 'an hour'],
     'ttl zero' => ['teams.roles.cache.ttl', 0],
-    'blank store' => ['teams.roles.cache.store', ''],
     'array store' => ['teams.roles.cache.store', ['redis']],
-    'blank key' => ['teams.roles.cache.key', ' '],
+    'array key' => ['teams.roles.cache.key', ['teams.roles']],
 ]);
 
-it('refuses a blank or non-string role key (strict config)', function (string $key, mixed $value, Closure $act): void {
+it('takes the default role cache store, key and ttl when they are not set (strict config)', function (?string $blank): void {
+    config()->set('teams.roles.cache.store', $blank);
+    config()->set('teams.roles.cache.key', $blank);
+    config()->set('teams.roles.cache.ttl', $blank);
+
+    expect(TeamsConfig::cacheStore())->toBeNull()
+        ->and(TeamsConfig::cacheKey())->toBe('teams.roles')
+        ->and(TeamsConfig::cacheTtl())->toBe(3600);
+})->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);
+
+it('refuses a non-string role key (strict config)', function (string $key, mixed $value, Closure $act): void {
     config()->set($key, $value);
 
     expect($act)->toThrow(InvalidConfigurationException::class, $key);
 })->with([
-    'owner role' => ['teams.roles.owner', '', fn () => Teams::create(new CreateTeamData('Acme', owner: User::create()))],
+    'owner role' => ['teams.roles.owner', ['owner'], fn () => Teams::create(new CreateTeamData('Acme', owner: User::create()))],
     'admin role' => ['teams.roles.admin', 42, fn () => Teams::for(Teams::create(new CreateTeamData('Acme', owner: User::create())))->transferOwnershipTo(User::create())],
     'default role' => ['teams.roles.default', ['member'], fn () => Teams::for(Team::factory()->create())->joinRequests()->open(User::create())],
 ]);
 
-it('refuses a blank or non-string gate prefix or owner ability (strict config)', function (string $key, mixed $value): void {
+it('takes the default role keys when they are not set (strict config)', function (?string $blank): void {
+    config()->set('teams.roles.owner', $blank);
+    config()->set('teams.roles.admin', $blank);
+    config()->set('teams.roles.default', $blank);
+
+    $owner = User::create();
+    $team = Teams::create(new CreateTeamData('Acme', owner: $owner));
+
+    expect([TeamsConfig::ownerRole(), TeamsConfig::adminRole(), TeamsConfig::defaultRole()])->toBe(['owner', 'admin', 'member'])
+        ->and($team->members()->firstOrFail()->role)->toBe('owner');
+})->with(['absent' => null, 'blank' => '', 'whitespace' => '  ']);
+
+it('refuses a non-string gate prefix or owner ability (strict config)', function (string $key, mixed $value): void {
     config()->set($key, $value);
 
     $provider = new TeamsServiceProvider(app());
@@ -281,10 +330,17 @@ it('refuses a blank or non-string gate prefix or owner ability (strict config)',
     expect(fn () => (new ReflectionMethod($provider, 'registerGate'))->invoke($provider))
         ->toThrow(InvalidConfigurationException::class, $key);
 })->with([
-    'blank prefix' => ['teams.gate.prefix', ''],
     'array prefix' => ['teams.gate.prefix', ['teams']],
-    'blank owner ability' => ['teams.gate.owner_ability', '  '],
+    'integer owner ability' => ['teams.gate.owner_ability', 42],
 ]);
+
+it('takes the default gate prefix and owner ability when they are not set (strict config)', function (?string $blank): void {
+    config()->set('teams.gate.prefix', $blank);
+    config()->set('teams.gate.owner_ability', $blank);
+
+    expect(TeamsConfig::gatePrefix())->toBe('teams')
+        ->and(TeamsConfig::gateOwnerAbility())->toBe('owner');
+})->with(['absent' => null, 'blank' => '', 'whitespace' => '  ']);
 
 it('keeps the about section rendering on a malformed host config (strict config)', function (): void {
     config()->set('teams.roles.provider', 'databse');
@@ -301,3 +357,14 @@ it('keeps the about section rendering on a malformed host config (strict config)
         mustRender: ['Role provider', 'Invites', 'Members', 'Join requests', 'Approvals', 'INVALID'],
     );
 });
+
+it('reports the default notification queue when none is set (strict config)', function (?string $connection): void {
+    config()->set('teams.notifications.queue_connection', $connection);
+
+    Artisan::call('about', ['--only' => 'teams', '--json' => true]);
+
+    /** @var array{teams: array<string, string>} $about */
+    $about = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($about['teams']['notification_queue'])->toBe('DEFAULT');
+})->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);

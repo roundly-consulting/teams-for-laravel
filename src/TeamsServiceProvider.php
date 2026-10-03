@@ -223,7 +223,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
             'Join requests' => self::orInvalid(static fn (): string => 'prune '.TeamsConfig::joinRequestsPruneAfter()->forHumans().' after resolution'),
             'Approvals' => $this->approvals(),
             'Gate' => $this->gate(),
-            'Notification queue' => config('teams.notifications.queue_connection') !== null ? 'SET' : 'DEFAULT',
+            'Notification queue' => TeamsConfig::isUnset('teams.notifications.queue_connection') ? 'DEFAULT' : 'SET',
         ];
     }
 

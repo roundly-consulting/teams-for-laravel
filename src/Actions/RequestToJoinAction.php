@@ -102,16 +102,12 @@ final readonly class RequestToJoinAction
     }
 
     /**
-     * Unset means unanimous; anything that names no `ApprovalRule` throws rather than
-     * quietly becoming unanimous, so a typo cannot change who has to sign off.
+     * Not set (absent, null or blank) means unanimous; anything that names no `ApprovalRule`
+     * throws rather than quietly becoming unanimous, so a typo cannot change who has to sign off.
      */
     private function configuredRule(): ApprovalRule
     {
-        if (config('teams.approvals.rule') === null) {
-            return ApprovalRule::Unanimous;
-        }
-
-        return Config::enum('teams.approvals.rule', ApprovalRule::class);
+        return Config::enum('teams.approvals.rule', ApprovalRule::class, ApprovalRule::Unanimous);
     }
 
     private function configuredQuorum(): ?int

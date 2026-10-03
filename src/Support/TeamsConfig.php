@@ -12,8 +12,9 @@ use Throwable;
 /**
  * The strict readers behind every teams setting that is not a switch or a model.
  *
- * An absent (null) key means the documented default. A present value of the wrong shape
- * throws InvalidConfigurationException naming the key: a typo never falls back silently.
+ * A key that is not set (absent, null or blank: `''` or whitespace, a host's `KEY=`) means
+ * the documented default. A present value of the wrong shape throws
+ * InvalidConfigurationException naming the key: a typo never falls back silently.
  * Before, `roles.provider` turned anything but `database` into the in-memory provider, an
  * `(int)` cast turned `TEAMS_INVITES_CODE_LENGTH=abc` into empty invite codes, and a
  * negative prune interval pruned memberships that had not even expired yet.
@@ -42,7 +43,7 @@ final class TeamsConfig
     private const int MAX_CODE_LENGTH = 255;
 
     /**
-     * `array` or `database`; absent means `array`.
+     * `array` or `database`; not set means `array`.
      */
     public static function roleProvider(): string
     {
@@ -65,11 +66,11 @@ final class TeamsConfig
     }
 
     /**
-     * The role-cache store, or null for the default store.
+     * The role-cache store, or null (not set) for the default store.
      */
     public static function cacheStore(): ?string
     {
-        return config('teams.roles.cache.store') === null ? null : Config::requireString('teams.roles.cache.store');
+        return self::isUnset('teams.roles.cache.store') ? null : Config::requireString('teams.roles.cache.store');
     }
 
     public static function cacheKey(): string
@@ -78,7 +79,7 @@ final class TeamsConfig
     }
 
     /**
-     * Seconds the role map stays cached: 1 to a year, 3600 when absent.
+     * Seconds the role map stays cached: 1 to a year, 3600 when not set.
      */
     public static function cacheTtl(): int
     {
@@ -86,7 +87,7 @@ final class TeamsConfig
     }
 
     /**
-     * Characters in a generated invite code: 1–255, 32 when absent.
+     * Characters in a generated invite code: 1–255, 32 when not set.
      */
     public static function inviteCodeLength(): int
     {
@@ -94,7 +95,7 @@ final class TeamsConfig
     }
 
     /**
-     * The default invite lifetime — a positive interval, `7 days` when absent.
+     * The default invite lifetime — a positive interval, `7 days` when not set.
      */
     public static function inviteExpiresAfter(): CarbonInterval
     {
@@ -102,7 +103,7 @@ final class TeamsConfig
     }
 
     /**
-     * How long after expiry a membership is pruned — zero or positive, `30 days` when absent.
+     * How long after expiry a membership is pruned — zero or positive, `30 days` when not set.
      */
     public static function membersPruneAfter(): CarbonInterval
     {
@@ -110,7 +111,7 @@ final class TeamsConfig
     }
 
     /**
-     * How long after resolution a join request is pruned — zero or positive, `30 days` when absent.
+     * How long after resolution a join request is pruned — zero or positive, `30 days` when not set.
      */
     public static function joinRequestsPruneAfter(): CarbonInterval
     {
@@ -118,7 +119,7 @@ final class TeamsConfig
     }
 
     /**
-     * The default expiring-membership window in days: 1–3660, 7 when absent.
+     * The default expiring-membership window in days: 1–3660, 7 when not set.
      */
     public static function membersExpiringWithin(): int
     {
@@ -126,11 +127,11 @@ final class TeamsConfig
     }
 
     /**
-     * The default approval quorum, or null when none is configured.
+     * The default approval quorum, or null when none is set.
      */
     public static function approvalQuorum(): ?int
     {
-        return config('teams.approvals.quorum') === null ? null : Config::integer('teams.approvals.quorum', 1, min: 1);
+        return self::isUnset('teams.approvals.quorum') ? null : Config::integer('teams.approvals.quorum', 1, min: 1);
     }
 
     public static function gatePrefix(): string
@@ -144,23 +145,34 @@ final class TeamsConfig
     }
 
     /**
-     * A string setting: `$default` when absent, otherwise a non-empty string or a throw.
+     * Whether `$key` is not set: absent, null or blank (`''` or whitespace, a host's `KEY=`).
+     * Every reader here treats such a key exactly like an absent one.
      */
-    private static function string(string $key, string $default): string
+    public static function isUnset(string $key): bool
     {
-        return config($key) === null ? $default : Config::requireString($key);
+        $value = config($key);
+
+        return $value === null || (is_string($value) && trim($value) === '');
     }
 
     /**
-     * A relative interval such as `7 days` or `P7D`: `$default` when absent; anything that
+     * A string setting: `$default` when not set, otherwise a string or a throw.
+     */
+    private static function string(string $key, string $default): string
+    {
+        return self::isUnset($key) ? $default : Config::requireString($key);
+    }
+
+    /**
+     * A relative interval such as `7 days` or `P7D`: `$default` when not set; anything that
      * does not parse, or is negative (or zero, unless allowed), throws naming the key.
      */
     private static function interval(string $key, string $default, bool $allowZero): CarbonInterval
     {
-        $value = config($key) ?? $default;
+        $value = self::isUnset($key) ? $default : config($key);
 
         try {
-            $interval = is_string($value) && trim($value) !== '' ? CarbonInterval::make($value) : null;
+            $interval = is_string($value) ? CarbonInterval::make($value) : null;
         } catch (Throwable) {
             $interval = null;
         }
@@ -170,7 +182,6 @@ final class TeamsConfig
         if ($interval === null || ($allowZero ? $seconds < 0 : $seconds <= 0)) {
             $expectation = $allowZero ? 'a zero or positive interval such as "30 days"' : 'a positive interval such as "7 days"';
             $given = match (true) {
-                $value === '' => "''",
                 is_string($value) => $value,
                 is_int($value), is_float($value), is_bool($value) => var_export($value, true),
                 default => get_debug_type($value),

@@ -66,9 +66,11 @@ return [
     | "cache" wraps the "database" provider in a cache layer that is flushed on
     | every role mutation. It is off by default.
     |
-    | "provider" must be "array" or "database", the role keys non-empty strings
-    | and "ttl" 1-31536000 seconds; anything else throws an
+    | "provider" must be "array" or "database", the role keys strings and
+    | "ttl" 1-31536000 seconds; anything else throws an
     | InvalidConfigurationException rather than falling back to a default.
+    | A blank value (a bare "TEAMS_ROLES_PROVIDER=") is not set and takes
+    | the default; that holds for every key in this file.
     |
     */
 

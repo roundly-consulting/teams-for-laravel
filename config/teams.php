@@ -37,7 +37,8 @@ return [
     | requester / responded_by columns. Use "uuid" or "ulid" when the models
     | those columns point at use UUID/ULID primary keys, otherwise leave it as
     | "bigint". Your morph targets must share one key type; set this to match.
-    | Any unrecognized value falls back to "bigint".
+    | Any other value throws an InvalidConfigurationException when the
+    | migrations run.
     |
     | Supported: "bigint", "uuid", "ulid"
     |
@@ -72,9 +73,9 @@ return [
         'owner' => 'owner',
         'admin' => 'admin',
         'default' => env('TEAMS_DEFAULT_ROLE', 'member'),
-        'per_team' => (bool) env('TEAMS_PER_TEAM_ROLES', false),
+        'per_team' => env('TEAMS_PER_TEAM_ROLES', false),
         'cache' => [
-            'enabled' => (bool) env('TEAMS_ROLES_CACHE', false),
+            'enabled' => env('TEAMS_ROLES_CACHE', false),
             'store' => env('TEAMS_ROLES_CACHE_STORE'),
             'key' => env('TEAMS_ROLES_CACHE_KEY', 'teams.roles'),
             'ttl' => (int) env('TEAMS_ROLES_CACHE_TTL', 3600),
@@ -152,12 +153,12 @@ return [
     |
     | "rule" and "quorum" are the defaults used when the handle does not set
     | them explicitly; "rule" is an ApprovalRule value (unanimous/quorum/any/
-    | weighted).
+    | weighted) and any other value throws an InvalidConfigurationException.
     |
     */
 
     'approvals' => [
-        'enabled' => (bool) env('TEAMS_APPROVALS', false),
+        'enabled' => env('TEAMS_APPROVALS', false),
         'rule' => env('TEAMS_APPROVALS_RULE', 'unanimous'),
         'quorum' => env('TEAMS_APPROVALS_QUORUM') !== null ? (int) env('TEAMS_APPROVALS_QUORUM') : null,
     ],
@@ -176,7 +177,7 @@ return [
     */
 
     'gate' => [
-        'register' => (bool) env('TEAMS_REGISTER_GATE', true),
+        'register' => env('TEAMS_REGISTER_GATE', true),
         'prefix' => env('TEAMS_GATE_PREFIX', 'teams'),
         'owner_ability' => env('TEAMS_GATE_OWNER_ABILITY', 'owner'),
     ],

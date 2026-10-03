@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Teams\Roles;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Models\TeamRole;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
@@ -51,7 +52,7 @@ final class TeamRoleResolver
 
     private function perTeamEnabled(): bool
     {
-        return (bool) config('teams.roles.per_team', false);
+        return Config::boolean('teams.roles.per_team');
     }
 
     private function override(Team $team, string $key): ?TeamRole

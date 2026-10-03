@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use RoundlyConsulting\Approvals\Enums\ApprovalStatus;
 use RoundlyConsulting\Approvals\Events\ApprovalRequestResolved;
 use RoundlyConsulting\Approvals\Models\ApprovalRequest;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Exceptions\JoinRequestNotPendingException;
 use RoundlyConsulting\Teams\Models\Team;
@@ -101,6 +102,6 @@ final class SyncJoinRequestStatusFromApproval
 
     private function enabled(): bool
     {
-        return (bool) config('teams.approvals.enabled', false);
+        return Config::boolean('teams.approvals.enabled');
     }
 }

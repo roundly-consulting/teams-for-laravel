@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Teams\Database\Factories\MemberFactory;
 use RoundlyConsulting\Teams\Events\MembershipExpired;
 use RoundlyConsulting\Teams\Roles\Contracts\RoleProvider;
@@ -97,7 +98,7 @@ class Member extends Model
 
         // With per-team overrides off, resolve against the global provider
         // directly so no team relation is loaded (zero extra queries).
-        if (! config('teams.roles.per_team', false)) {
+        if (! Config::boolean('teams.roles.per_team')) {
             return app(RoleProvider::class)->find($this->role);
         }
 

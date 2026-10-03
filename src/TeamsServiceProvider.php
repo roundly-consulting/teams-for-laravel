@@ -14,6 +14,7 @@ use RoundlyConsulting\PackageToolkit\Concerns\RegistersBladeDirectives;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBlueprintMacros;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
 use RoundlyConsulting\Teams\Commands\MakePolicyCommand;
@@ -100,7 +101,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
 
             // Behind the shared cache the database provider must not memoise: a cache
             // refill has to read the table, never this process's earlier copy of it.
-            return config('teams.roles.cache.enabled')
+            return Config::boolean('teams.roles.cache.enabled')
                 ? new CachedRoleProvider(new DatabaseRoleProvider(memoize: false))
                 : new DatabaseRoleProvider;
         });
@@ -135,7 +136,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
      */
     private function registerGate(): void
     {
-        if (! config('teams.gate.register')) {
+        if (! Config::boolean('teams.gate.register', true)) {
             return;
         }
 
@@ -206,7 +207,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
             'Registered roles' => $this->countOf(count($this->app->make(RoleProvider::class)->all()), 'role'),
             'Registered permissions' => $this->countOf(count($this->app->make(PermissionRegistry::class)->all()), 'permission'),
             'Role keys' => $this->roleKeys(),
-            'Per-team roles' => config('teams.roles.per_team') ? 'ON' : 'OFF',
+            'Per-team roles' => Config::boolean('teams.roles.per_team') ? 'ON' : 'OFF',
             'Role cache' => $this->roleCache(),
             'Invites' => sprintf(
                 'expire after %s, %d-char codes',
@@ -244,7 +245,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
 
     private function roleCache(): string
     {
-        if (! config('teams.roles.cache.enabled')) {
+        if (! Config::boolean('teams.roles.cache.enabled')) {
             return 'OFF';
         }
 
@@ -257,7 +258,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
 
     private function approvals(): string
     {
-        if (! config('teams.approvals.enabled')) {
+        if (! Config::boolean('teams.approvals.enabled')) {
             return 'OFF';
         }
 
@@ -272,7 +273,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
 
     private function gate(): string
     {
-        if (! config('teams.gate.register')) {
+        if (! Config::boolean('teams.gate.register', true)) {
             return 'OFF';
         }
 

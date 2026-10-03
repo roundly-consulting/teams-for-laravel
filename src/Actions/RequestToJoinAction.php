@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use RoundlyConsulting\Approvals\Enums\ApprovalRule;
 use RoundlyConsulting\Approvals\Facades\Approvals;
 use RoundlyConsulting\Options\Facades\Options;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\DataTransferObjects\RequestToJoinData;
 use RoundlyConsulting\Teams\Enums\JoinPolicy;
@@ -96,15 +97,20 @@ final readonly class RequestToJoinAction
 
     private function routesThroughApprovals(RequestToJoinData $data): bool
     {
-        return $data->approvers !== [] && (bool) config('teams.approvals.enabled', false);
+        return $data->approvers !== [] && Config::boolean('teams.approvals.enabled');
     }
 
+    /**
+     * Unset means unanimous; anything that names no `ApprovalRule` throws rather than
+     * quietly becoming unanimous, so a typo cannot change who has to sign off.
+     */
     private function configuredRule(): ApprovalRule
     {
-        /** @var string $rule */
-        $rule = config('teams.approvals.rule', 'unanimous');
+        if (config('teams.approvals.rule') === null) {
+            return ApprovalRule::Unanimous;
+        }
 
-        return ApprovalRule::tryFrom($rule) ?? ApprovalRule::Unanimous;
+        return Config::enum('teams.approvals.rule', ApprovalRule::class);
     }
 
     private function configuredQuorum(): ?int

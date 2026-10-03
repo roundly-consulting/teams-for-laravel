@@ -11,19 +11,16 @@ use RoundlyConsulting\Teams\Models\Member;
 /**
  * Resolves the Eloquent model backing a team membership from `teams.models.member`.
  *
- * The toolkit ModelResolver validates that the configured value is a real
- * Eloquent model; it cannot know it is *ours*, so anything that is not a
- * Member (and so cannot answer the package's casts, scopes and relations)
- * falls back to the packaged model.
+ * Absent config resolves the packaged model; anything else must be that model or a subclass of
+ * it, or the toolkit's ModelResolver throws InvalidConfigurationException naming the key — a
+ * foreign class is never silently replaced.
  */
 final class MemberModel
 {
     /** @return class-string<Member> */
     public static function class(): string
     {
-        $model = ModelResolver::for('teams.models.member', Member::class);
-
-        return is_a($model, Member::class, true) ? $model : Member::class;
+        return ModelResolver::for('teams.models.member', Member::class);
     }
 
     public static function new(): Member

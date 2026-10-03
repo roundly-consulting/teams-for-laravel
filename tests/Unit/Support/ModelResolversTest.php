@@ -42,12 +42,14 @@ it('throws when the configured value is not an Eloquent model', function (string
     $resolver::class();
 })->with('resolvers')->throws(InvalidConfigurationException::class);
 
-it('falls back to the packaged model when the configured model is not ours', function (string $resolver, string $key, string $model): void {
-    // A real Eloquent model — the toolkit validates is-a-Model, never is-a-*ours* —
-    // that cannot answer this package's casts, scopes and relations.
+it('refuses a foreign model instead of falling back to the packaged one', function (string $resolver, string $key, string $model): void {
+    // The toolkit refuses any class that is not the packaged model or a subclass of it.
     config()->set($key, ForeignModel::class);
 
-    expect($resolver::class())->toBe($model);
+    expect(fn (): string => $resolver::class())->toThrow(
+        InvalidConfigurationException::class,
+        "Configuration value [{$key}] must be a class-string of [{$model}], [".ForeignModel::class.'] given.',
+    );
 })->with('resolvers');
 
 it('honours a host subclass of the packaged model', function (): void {

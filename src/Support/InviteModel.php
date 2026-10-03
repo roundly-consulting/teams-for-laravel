@@ -11,19 +11,16 @@ use RoundlyConsulting\Teams\Models\Invite;
 /**
  * Resolves the Eloquent model backing a team invite from `teams.models.invite`.
  *
- * The toolkit ModelResolver validates that the configured value is a real
- * Eloquent model; it cannot know it is *ours*, so anything that is not a
- * Invite (and so cannot answer the package's casts, scopes and relations)
- * falls back to the packaged model.
+ * Absent config resolves the packaged model; anything else must be that model or a subclass of
+ * it, or the toolkit's ModelResolver throws InvalidConfigurationException naming the key — a
+ * foreign class is never silently replaced.
  */
 final class InviteModel
 {
     /** @return class-string<Invite> */
     public static function class(): string
     {
-        $model = ModelResolver::for('teams.models.invite', Invite::class);
-
-        return is_a($model, Invite::class, true) ? $model : Invite::class;
+        return ModelResolver::for('teams.models.invite', Invite::class);
     }
 
     public static function new(): Invite

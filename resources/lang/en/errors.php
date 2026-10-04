@@ -14,4 +14,6 @@ return [
     'join_request_not_pending' => 'Join request #:id has already been resolved.',
     'join_request_not_in_team' => 'Join request #:id does not belong to this team.',
     'member_not_found' => 'The given model is not a member of team #:team.',
+    'join_policy_forbids_requests' => 'This team is invite-only and does not accept join requests.',
+    'max_seats_reached' => 'This team has reached its seat limit (:count seat).|This team has reached its seat limit (:count seats).',
 ];

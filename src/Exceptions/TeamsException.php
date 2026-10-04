@@ -11,7 +11,7 @@ class TeamsException extends RuntimeException
 {
     public static function joinPolicyForbidsRequests(): self
     {
-        return new self('This team is invite-only and does not accept join requests.');
+        return new self((string) trans('teams::errors.join_policy_forbids_requests'));
     }
 
     /**
@@ -25,6 +25,6 @@ class TeamsException extends RuntimeException
 
     public static function maxSeatsReached(int $maxSeats): self
     {
-        return new self("This team has reached its seat limit of {$maxSeats}.");
+        return new self(trans_choice('teams::errors.max_seats_reached', $maxSeats));
     }
 }

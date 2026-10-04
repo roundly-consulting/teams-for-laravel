@@ -15,5 +15,10 @@ return [
     'join_request_not_in_team' => 'Join request #:id does not belong to this team.',
     'member_not_found' => 'The given model is not a member of team #:team.',
     'join_policy_forbids_requests' => 'This team is invite-only and does not accept join requests.',
+    'invalid_config_value' => 'Configuration value [:key] must be :expected, [:given] given.',
+    'config_expectations' => [
+        'positive_interval' => 'a positive interval such as "7 days"',
+        'non_negative_interval' => 'a zero or positive interval such as "30 days"',
+    ],
     'max_seats_reached' => 'This team has reached its seat limit (:count seat).|This team has reached its seat limit (:count seats).',
 ];

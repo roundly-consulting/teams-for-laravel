@@ -374,3 +374,19 @@ it('reports the default notification queue when none is set (strict config)', fu
 
     expect($about['teams']['notification_queue'])->toBe('DEFAULT');
 })->with(['absent' => null, 'blank' => '', 'whitespace' => ' ']);
+
+it('words a refused interval in the current locale (strict config)', function (string $locale, string $key, Closure $read, string $expected): void {
+    config()->set($key, '7 dayz');
+    app()->setLocale($locale);
+
+    expect($read)->toThrow(InvalidConfigurationException::class, $expected);
+})->with([
+    'en positive' => ['en', 'teams.invites.expires_after', fn () => TeamsConfig::inviteExpiresAfter(),
+        'Configuration value [teams.invites.expires_after] must be a positive interval such as "7 days", [7 dayz] given.'],
+    'en zero or positive' => ['en', 'teams.members.prune_after', fn () => TeamsConfig::membersPruneAfter(),
+        'Configuration value [teams.members.prune_after] must be a zero or positive interval such as "30 days", [7 dayz] given.'],
+    'sk positive' => ['sk', 'teams.invites.expires_after', fn () => TeamsConfig::inviteExpiresAfter(),
+        'Konfiguračná hodnota [teams.invites.expires_after] musí byť kladný interval, napríklad „7 days“; nastavená hodnota je [7 dayz].'],
+    'sk zero or positive' => ['sk', 'teams.join_requests.prune_after', fn () => TeamsConfig::joinRequestsPruneAfter(),
+        'Konfiguračná hodnota [teams.join_requests.prune_after] musí byť nulový alebo kladný interval, napríklad „30 days“; nastavená hodnota je [7 dayz].'],
+]);

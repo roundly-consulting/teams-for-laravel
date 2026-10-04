@@ -186,14 +186,18 @@ final class TeamsConfig
         $seconds = $interval === null ? -1.0 : $interval->totalSeconds;
 
         if ($interval === null || ($allowZero ? $seconds < 0 : $seconds <= 0)) {
-            $expectation = $allowZero ? 'a zero or positive interval such as "30 days"' : 'a positive interval such as "7 days"';
+            $expectation = $allowZero ? 'non_negative_interval' : 'positive_interval';
             $given = match (true) {
                 is_string($value) => $value,
                 is_int($value), is_float($value), is_bool($value) => var_export($value, true),
                 default => get_debug_type($value),
             };
 
-            throw new InvalidConfigurationException("Configuration value [{$key}] must be {$expectation}, [{$given}] given.");
+            throw new InvalidConfigurationException((string) trans('teams::errors.invalid_config_value', [
+                'key' => $key,
+                'expected' => (string) trans('teams::errors.config_expectations.'.$expectation),
+                'given' => $given,
+            ]));
         }
 
         return $interval;

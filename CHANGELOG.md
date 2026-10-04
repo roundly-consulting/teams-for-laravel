@@ -9,6 +9,7 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 ### Fixed
 
 - The `TeamsException` thrown when an invite-only team receives a join request, and the one thrown when a team's `MaxSeats` cap is reached, are now translated into the current locale (English and Slovak). The seat-limit message names the cap with proper plural forms ("This team has reached its seat limit (3 seats).").
+- The `InvalidConfigurationException` thrown for an invalid interval setting (`teams.invites.expires_after`, `teams.members.prune_after`, `teams.join_requests.prune_after`) is now translated into the current locale (English and Slovak); the English wording is unchanged.
 
 ## 1.0.1 - 2026-10-04
 

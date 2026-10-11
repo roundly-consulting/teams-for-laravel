@@ -6,9 +6,12 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+## 1.0.3 - 2026-10-11
+
 ### Changed
 
 - Maintenance: requires the latest roundly packages — package-toolkit `^1.3.0`, addresses `^1.0.1`, approvals `^1.2.3`, connections `^1.1.0`, contacts `^1.1.1`, enums `^1.1.0`, options `^1.1.0`; dev: testing `^1.2.1`.
+- Documentation: the README hero image uses an absolute URL, so it renders on Packagist and other sites.
 
 ## 1.0.2 - 2026-10-04
 

@@ -8,11 +8,23 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use RoundlyConsulting\Teams\Enums\JoinRequestStatus;
 use RoundlyConsulting\Teams\Models\JoinRequest;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Support\JoinRequestModel;
 
 /** @extends Factory<JoinRequest> */
 final class JoinRequestFactory extends Factory
 {
     protected $model = JoinRequest::class;
+
+    /**
+     * Build the model the host configured in `teams.models.join_request`, not the packaged one, so
+     * a host subclass comes out of the factory with its own events, observers and table.
+     *
+     * @return class-string<JoinRequest>
+     */
+    public function modelName(): string
+    {
+        return JoinRequestModel::class();
+    }
 
     /** @return array<string, mixed> */
     public function definition(): array

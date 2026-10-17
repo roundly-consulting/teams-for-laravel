@@ -87,6 +87,8 @@ ArchPresets::modelsResolveThroughSeam(__DIR__.'/../src', 'Support', [
     'teams.models.join_request',
 ]);
 
+ArchPresets::factoriesResolveThroughSeam(__DIR__.'/../database/factories', __DIR__.'/../src', 'Support');
+
 /**
  * The morph-key seam, guarded. Teams' `owner` (teams), `member` (team_members),
  * `invited_by` (team_invites) and `requester`/`responded_by` (team_join_requests) columns

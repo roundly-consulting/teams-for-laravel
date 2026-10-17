@@ -8,11 +8,23 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Support\MemberModel;
 
 /** @extends Factory<Member> */
 final class MemberFactory extends Factory
 {
     protected $model = Member::class;
+
+    /**
+     * Build the model the host configured in `teams.models.member`, not the packaged one, so a
+     * host subclass comes out of the factory with its own events, observers and table.
+     *
+     * @return class-string<Member>
+     */
+    public function modelName(): string
+    {
+        return MemberModel::class();
+    }
 
     /** @return array<string, mixed> */
     public function definition(): array

@@ -86,6 +86,15 @@ abstract class TestCase extends PackageTestCase
     }
 
     /**
+     * Migrate once per worker and schema signature, then empty the tables after each test.
+     * The migrations read only config, which the signature already covers.
+     */
+    protected function keepsMigratedSchema(): bool
+    {
+        return true;
+    }
+
+    /**
      * Set here rather than in `defineEnvironment()`: the base case does its whole job there
      * (DriverMatrix::configure + these keys + the model swaps), so an override without
      * `parent::` decapitates it silently — no error, no red, DriverMatrix simply never

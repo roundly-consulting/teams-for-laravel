@@ -26,7 +26,7 @@ itself — in requests and queued jobs — and teams can nest.
 
 ## Installation
 
-Requires PHP 8.4 and Laravel 12 or 13.
+Requires PHP 8.4 and Laravel 13.
 
 ```bash
 composer require roundly-consulting/teams-for-laravel

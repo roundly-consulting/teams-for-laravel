@@ -13,7 +13,7 @@ use RoundlyConsulting\Teams\Tests\User;
 it('has correct casts', function () {
     $member = new Member;
 
-    expect($member->getCasts())->toBe([
+    expect($member->getCasts())->toEqual([
         'id' => 'int',
         'meta' => 'collection',
         'expires_at' => 'datetime',

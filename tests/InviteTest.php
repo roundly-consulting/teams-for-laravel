@@ -14,7 +14,7 @@ use RoundlyConsulting\Teams\Tests\User;
 it('has correct casts', function () {
     $invite = new Invite;
 
-    expect($invite->getCasts())->toBe([
+    expect($invite->getCasts())->toEqual([
         'id' => 'int',
         'expires_at' => 'datetime',
         'meta' => 'collection',

@@ -105,7 +105,7 @@ it('runs company A\'s jobs as company A', function (): void {
 
     Teams::setCurrent(null);
     app()->forgetScopedInstances();
-    $this->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true])->assertSuccessful();
+    $this->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 4096])->assertSuccessful();
 
     expect(array_column(ProbeJob::$seen, 'current'))->toBe([$this->world->a->getKey(), $this->world->b->getKey()])
         ->and(array_column(ProbeJob::$seen, 'projects'))->toBe([['Apollo', 'Gemini'], ['Apollo', 'Gemini']]);

@@ -9,6 +9,7 @@ use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Tests\Fixtures\Scoping\Healthy\Project;
+use RoundlyConsulting\Teams\Tests\Fixtures\Scoping\UuidTeam;
 use RoundlyConsulting\Teams\Tests\Support\TwoCompanies;
 use RoundlyConsulting\Teams\Tests\User;
 
@@ -43,9 +44,18 @@ it('lets a member in and scopes the request to their team', function (): void {
 it('answers 404 to a non-member, exactly like a team that does not exist', function (): void {
     $this->actingAs($this->world->alice)->getJson('/teams/'.$this->world->b->getKey().'/projects')->assertNotFound();
     $this->actingAs($this->world->alice)->getJson('/teams/999999/projects')->assertNotFound();
+    // Text a bigint key column rejects outright on Postgres — never a 500.
     $this->actingAs($this->world->alice)->getJson('/teams/not-a-key/projects')->assertNotFound();
+    $this->actingAs($this->world->alice)->getJson('/teams/99999999999999999999999/projects')->assertNotFound();
+    $this->actingAs($this->world->alice)->getJson('/teams/-1/projects')->assertNotFound();
 
     expect(Teams::current())->toBeNull();
+});
+
+it('answers 404 to a malformed id of a UUID-keyed team model', function (): void {
+    config()->set('teams.models.team', UuidTeam::class);
+
+    $this->actingAs($this->world->alice)->getJson('/teams/not-a-uuid/projects')->assertNotFound();
 });
 
 it('answers 404 to an expired membership', function (): void {

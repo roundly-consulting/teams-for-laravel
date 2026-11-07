@@ -72,12 +72,12 @@ it('publishes every migration timestamp-injected into the host', function (): vo
 /**
  * R — the real-engine proof, and the whole point of this row. The deleted local version ran
  * the published files against a throwaway SQLite database — the one engine that cannot fail
- * this class of check — and openly said so. `migrations: 6` pins the count, and the
+ * this class of check — and openly said so. `migrations: 7` pins the count, and the
  * expectation additionally fails a set that "applies cleanly" while creating no tables (an
  * empty `up()` otherwise passes and proves nothing).
  */
 it('applies its migrations on postgres', function () use ($migrations): void {
-    expect($migrations)->toApplyOnConnection('pgsql', migrations: 6);
+    expect($migrations)->toApplyOnConnection('pgsql', migrations: 7);
 })->skip(fn (): bool => ! test()->connectionAvailable('pgsql'), 'no postgres connection available');
 
 /**

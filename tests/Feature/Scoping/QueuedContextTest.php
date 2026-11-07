@@ -26,7 +26,7 @@ function workQueuedJobsInAFreshScope(): void
     Teams::setCurrent(null);
     app()->forgetScopedInstances();
 
-    test()->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true])->assertSuccessful();
+    test()->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 4096])->assertSuccessful();
 }
 
 it('restores the dispatching request\'s team inside the job', function (): void {

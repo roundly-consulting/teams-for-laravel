@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Teams\Http\Middleware;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use RoundlyConsulting\Teams\Exceptions\TeamContextException;
@@ -73,7 +74,22 @@ final readonly class SetTeamContext
             return null;
         }
 
-        $team = TeamModel::new()->resolveRouteBinding($value, $field);
+        $model = TeamModel::new();
+        $field ??= $model->getRouteKeyName();
+
+        // A value an integer key column cannot hold ("abc", an overflow) is a team that does
+        // not exist. Asked anyway, Postgres rejects the query outright — a 500 where every
+        // other unknown team gets the deny status.
+        if ($field === $model->getKeyName() && $model->getKeyType() === 'int' && filter_var($value, FILTER_VALIDATE_INT) === false) {
+            return null;
+        }
+
+        try {
+            $team = $model->resolveRouteBinding($value, $field);
+        } catch (ModelNotFoundException) {
+            // UUID/ULID-keyed team models refuse a malformed id this way.
+            return null;
+        }
 
         return $team instanceof Team ? $team : null;
     }

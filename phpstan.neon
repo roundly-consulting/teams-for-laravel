@@ -7,3 +7,4 @@ parameters:
         - database
         - config
         - tests/User.php
+        - tests/Fixtures/Scoping

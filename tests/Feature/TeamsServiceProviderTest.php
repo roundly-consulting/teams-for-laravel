@@ -26,7 +26,7 @@ it('never auto-loads its migrations', function (): void {
 it('publishes every migration timestamp-injected under the teams-migrations tag', function (): void {
     $paths = ServiceProvider::pathsToPublish(TeamsServiceProvider::class, 'teams-migrations');
 
-    expect($paths)->toHaveCount(6);
+    expect($paths)->toHaveCount(7);
 
     $destinations = array_values(array_map(
         static fn (string $target): string => basename($target),
@@ -36,7 +36,7 @@ it('publishes every migration timestamp-injected under the teams-migrations tag'
     sort($destinations);
 
     foreach ($destinations as $destination) {
-        expect($destination)->toMatch('/^\d{4}_\d{2}_\d{2}_\d{6}_000\d_create_\w+_table\.php$/');
+        expect($destination)->toMatch('/^\d{4}_\d{2}_\d{2}_\d{6}_000\d_(create|add)_\w+_table\.php$/');
     }
 
     // The published timestamps preserve the dependency order — teams first, and
@@ -53,6 +53,7 @@ it('publishes every migration timestamp-injected under the teams-migrations tag'
         '0004_create_team_members_table.php',
         '0005_create_team_join_requests_table.php',
         '0006_create_team_role_overrides_table.php',
+        '0007_add_parent_id_to_teams_table.php',
     ]);
 });
 

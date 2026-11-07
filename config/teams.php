@@ -204,4 +204,66 @@ return [
         'queue_connection' => env('TEAMS_NOTIFY_CONNECTION'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Current team context
+    |--------------------------------------------------------------------------
+    |
+    | The "teams.context" route middleware reads the team from the route
+    | parameter named here (override per route: "teams.context:company"),
+    | binds it by the team model's route key (so a slug or ULID route key
+    | works), checks the user holds an active membership and sets the
+    | current team. "deny_status" is what a non-member gets: 404 (the
+    | default — another team's existence is not revealed) or 403.
+    |
+    */
+
+    'context' => [
+        'route_parameter' => env('TEAMS_CONTEXT_ROUTE_PARAMETER', 'team'),
+        'deny_status' => env('TEAMS_CONTEXT_DENY_STATUS', 404),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Team-scoped models
+    |--------------------------------------------------------------------------
+    |
+    | Models using the ScopedToTeam trait only ever read and write the rows of
+    | the current team(s). "without_context" decides what a scoped query does
+    | when no team context is set: "empty" (return no rows) or "throw" (a
+    | TeamContextException). It never returns every team's rows.
+    |
+    | "models" lists scoped models explicitly and "discover" lists the
+    | directories `php artisan teams:doctor` scans for them; the doctor fails
+    | when a scoped table lacks its team column or an index on it.
+    |
+    */
+
+    'scoping' => [
+        'without_context' => env('TEAMS_SCOPING_WITHOUT_CONTEXT', 'empty'),
+        'models' => [],
+        'discover' => [app_path('Models')],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Nested teams
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. When on, a team may have a parent (company → department
+    | → team). "max_depth" is how far below its root a team may sit: the root
+    | has depth 0, so 2 allows company → department → team. Cycles are always
+    | rejected. Membership stays per team; with "inherit_roles_down" on, a
+    | role held on a team also applies on every team below it (role and
+    | permission checks, the Gate, Blade directives and the context
+    | middleware honour it).
+    |
+    */
+
+    'nesting' => [
+        'enabled' => env('TEAMS_NESTING', false),
+        'max_depth' => env('TEAMS_NESTING_MAX_DEPTH', 4),
+        'inherit_roles_down' => env('TEAMS_INHERIT_ROLES_DOWN', false),
+    ],
+
 ];

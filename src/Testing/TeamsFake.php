@@ -292,6 +292,26 @@ final class TeamsFake extends TeamsManager
         $this->assertNone([TeamOperation::DefineRole], 'Expected no per-team roles to be defined, but %d were.');
     }
 
+    // Nesting ----------------------------------------------------------------------
+
+    /**
+     * `$team` was moved — under `$under` when given, otherwise anywhere (a root included).
+     */
+    public function assertTeamMoved(Team $team, ?Team $under = null): void
+    {
+        $this->assertRecorded(
+            TeamOperation::MoveTeam,
+            static fn (RecordedTeamOperation $op): bool => $op->involves('team', $team)
+                && ($under === null || $op->involves('parent', $under)),
+            'Expected the team to be moved'.($under === null ? '' : ' under the given parent').', but it was not.',
+        );
+    }
+
+    public function assertNothingMoved(): void
+    {
+        $this->assertNone([TeamOperation::MoveTeam], 'Expected no team to be moved, but %d were.');
+    }
+
     // Housekeeping -----------------------------------------------------------------
 
     public function assertInvitesPruned(): void

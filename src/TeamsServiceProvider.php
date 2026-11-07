@@ -6,7 +6,14 @@ namespace RoundlyConsulting\Teams;
 
 use Closure;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Http\Kernel as HttpKernelContract;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Log\Context\Events\ContextHydrated;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -18,6 +25,7 @@ use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\PackageToolkit\Support\Config;
+use RoundlyConsulting\Teams\Commands\DoctorCommand;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
 use RoundlyConsulting\Teams\Commands\MakePolicyCommand;
@@ -26,6 +34,8 @@ use RoundlyConsulting\Teams\Commands\PruneInvitesCommand;
 use RoundlyConsulting\Teams\Commands\PruneJoinRequestsCommand;
 use RoundlyConsulting\Teams\Commands\PruneMembersCommand;
 use RoundlyConsulting\Teams\Commands\ResendInviteCommand;
+use RoundlyConsulting\Teams\Events\TeamContextSet;
+use RoundlyConsulting\Teams\Http\Middleware\SetTeamContext;
 use RoundlyConsulting\Teams\Listeners\SyncJoinRequestStatusFromApproval;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Roles\CachedRoleProvider;
@@ -34,6 +44,8 @@ use RoundlyConsulting\Teams\Roles\DatabaseRoleProvider;
 use RoundlyConsulting\Teams\Roles\InMemoryRoleProvider;
 use RoundlyConsulting\Teams\Roles\PermissionRegistry;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
+use RoundlyConsulting\Teams\Scoping\TeamContext;
+use RoundlyConsulting\Teams\Scoping\TeamScopeColumn;
 use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
 use RoundlyConsulting\Teams\Support\MemberModel;
@@ -62,6 +74,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
                 MembersExpiringCommand::class,
                 ResendInviteCommand::class,
                 MakePolicyCommand::class,
+                DoctorCommand::class,
             ])
             ->publishesStubs(
                 __DIR__.'/../stubs/AcceptInviteController.stub',
@@ -114,6 +127,10 @@ final class TeamsServiceProvider extends PackageServiceProvider
         $this->app->singleton(PermissionRegistry::class);
 
         $this->app->singleton(TeamsManager::class);
+
+        // SCOPED like Laravel's own Context repository it fronts: the loaded team models
+        // and the withoutTeamScope() bypass belong to one request or job, never the next.
+        $this->app->scoped(TeamContext::class);
     }
 
     public function boot(): void
@@ -123,10 +140,65 @@ final class TeamsServiceProvider extends PackageServiceProvider
         // The migrations' key-type-aware morph columns are macros, so they must
         // exist before a host runs `php artisan migrate`.
         $this->registerBlueprintMacros();
+        $this->registerTeamScopeMacro();
 
         $this->registerGate();
+        $this->registerContextMiddleware();
+        $this->announceRestoredContext();
 
         Event::listen(ApprovalRequestResolved::class, SyncJoinRequestStatusFromApproval::class);
+    }
+
+    /**
+     * `$table->teamScope()` — the team column of a scoped table, typed like the team key,
+     * indexed and constrained onto the teams table.
+     */
+    private function registerTeamScopeMacro(): void
+    {
+        if (Blueprint::hasMacro('teamScope')) {
+            return;
+        }
+
+        Blueprint::macro('teamScope', function (string $column = 'team_id', bool $nullable = false): ForeignKeyDefinition {
+            /** @var Blueprint $this */
+            return TeamScopeColumn::add($this, $column, $nullable);
+        });
+    }
+
+    /**
+     * The `teams.context` alias, and its place in the priority list: right before
+     * SubstituteBindings, so a team-scoped route model (`{ticket}`) is bound inside the
+     * team context — bound outside it, the fail-closed scope would 404 every one. The
+     * authentication middleware already sits earlier in that list, so the user is known.
+     */
+    private function registerContextMiddleware(): void
+    {
+        $this->callAfterResolving('router', static function (Router $router): void {
+            $router->aliasMiddleware('teams.context', SetTeamContext::class);
+        });
+
+        $this->callAfterResolving(HttpKernelContract::class, static function (HttpKernelContract $kernel): void {
+            if ($kernel instanceof HttpKernel) {
+                $kernel->addToMiddlewarePriorityBefore(SubstituteBindings::class, SetTeamContext::class);
+            }
+        });
+    }
+
+    /**
+     * A queued job restores its dispatcher's team context through Laravel's Context
+     * hydration; announce it like any other context change.
+     */
+    private function announceRestoredContext(): void
+    {
+        Event::listen(ContextHydrated::class, function (ContextHydrated $event): void {
+            if (! $event->context->hasHidden(TeamContext::KEYS)) {
+                return;
+            }
+
+            $context = $this->app->make(TeamContext::class);
+
+            TeamContextSet::dispatch($context->teams(), $context->isMultiple(), true);
+        });
     }
 
     /**
@@ -224,6 +296,15 @@ final class TeamsServiceProvider extends PackageServiceProvider
             'Approvals' => $this->approvals(),
             'Gate' => $this->gate(),
             'Notification queue' => TeamsConfig::isUnset('teams.notifications.queue_connection') ? 'DEFAULT' : 'SET',
+            'Team context' => self::orInvalid(static fn (): string => sprintf(
+                'route parameter %s, non-members get %d',
+                TeamsConfig::contextRouteParameter() !== 'team' ? 'SET' : 'DEFAULT',
+                TeamsConfig::contextDenyStatus(),
+            )),
+            'Team scoping' => self::orInvalid(static fn (): string => TeamsConfig::throwWithoutContext()
+                ? 'throw without a context'
+                : 'no rows without a context'),
+            'Nested teams' => $this->nesting(),
         ];
     }
 
@@ -283,6 +364,21 @@ final class TeamsServiceProvider extends PackageServiceProvider
             TeamsConfig::gatePrefix() !== 'teams' ? 'SET' : 'DEFAULT',
             TeamsConfig::gateOwnerAbility() !== 'owner' ? 'SET' : 'DEFAULT',
         ));
+    }
+
+    private function nesting(): string
+    {
+        return self::orInvalid(static function (): string {
+            if (! TeamsConfig::nestingEnabled()) {
+                return 'OFF';
+            }
+
+            return sprintf(
+                'ON (max depth %d, roles inherit down %s)',
+                TeamsConfig::nestingMaxDepth(),
+                TeamsConfig::inheritRolesDown() ? 'ON' : 'OFF',
+            );
+        });
     }
 
     /**

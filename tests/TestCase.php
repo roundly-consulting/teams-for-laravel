@@ -14,10 +14,13 @@ use RoundlyConsulting\Options\Facades\Options;
 use RoundlyConsulting\Options\OptionsServiceProvider;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\TeamsServiceProvider;
+use RoundlyConsulting\Teams\Testing\Concerns\InteractsWithTeams;
 use RoundlyConsulting\Testing\PackageTestCase;
 
 abstract class TestCase extends PackageTestCase
 {
+    use InteractsWithTeams;
+
     protected function setUp(): void
     {
         parent::setUp();

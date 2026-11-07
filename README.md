@@ -21,7 +21,8 @@
 
 Teams, roles, permissions and invitations for any Eloquent model. Members carry a role, roles
 carry permissions checked through Laravel's Gate, and teams issue expiring, email-targeted
-invites and handle join requests.
+invites and handle join requests. Opt-in per-team data isolation keeps each customer's rows to
+itself — in requests and queued jobs — and teams can nest.
 
 ## Installation
 

@@ -27,6 +27,15 @@ final class TeamsConfig
 
     public const string PROVIDER_DATABASE = 'database';
 
+    public const string WITHOUT_CONTEXT_EMPTY = 'empty';
+
+    public const string WITHOUT_CONTEXT_THROW = 'throw';
+
+    /**
+     * The deepest nesting accepted — a sanity bound, not a recommendation.
+     */
+    private const int MAX_NESTING_DEPTH = 100;
+
     /**
      * Seconds in a year — the longest role-cache TTL accepted.
      */
@@ -148,6 +157,73 @@ final class TeamsConfig
     public static function gateOwnerAbility(): string
     {
         return self::string('teams.gate.owner_ability', 'owner');
+    }
+
+    /**
+     * The route parameter the context middleware reads the team from; `team` when not set.
+     */
+    public static function contextRouteParameter(): string
+    {
+        return self::string('teams.context.route_parameter', 'team');
+    }
+
+    /**
+     * The status a non-member gets from the context middleware: 404 (default) or 403.
+     */
+    public static function contextDenyStatus(): int
+    {
+        return Config::integer('teams.context.deny_status', 404, min: 403, max: 404);
+    }
+
+    /**
+     * Whether a scoped query without a team context throws instead of returning no rows.
+     */
+    public static function throwWithoutContext(): bool
+    {
+        return Config::oneOf('teams.scoping.without_context', [self::WITHOUT_CONTEXT_EMPTY, self::WITHOUT_CONTEXT_THROW], self::WITHOUT_CONTEXT_EMPTY)
+            === self::WITHOUT_CONTEXT_THROW;
+    }
+
+    /**
+     * The explicitly listed team-scoped models.
+     *
+     * @return list<string>
+     */
+    public static function scopedModels(): array
+    {
+        return Config::list('teams.scoping.models', []);
+    }
+
+    /**
+     * The directories the doctor scans for team-scoped models.
+     *
+     * @return list<string>
+     */
+    public static function scopedModelPaths(): array
+    {
+        return Config::list('teams.scoping.discover', []);
+    }
+
+    public static function nestingEnabled(): bool
+    {
+        return Config::boolean('teams.nesting.enabled');
+    }
+
+    /**
+     * How far below its root a team may sit (root = 0): 1–100, 4 when not set.
+     */
+    public static function nestingMaxDepth(): int
+    {
+        return Config::integer('teams.nesting.max_depth', 4, min: 1, max: self::MAX_NESTING_DEPTH);
+    }
+
+    /**
+     * Whether a role held on a team applies on the teams below it. Only ever true with
+     * nesting on: a flat team has nothing below it.
+     */
+    public static function inheritRolesDown(): bool
+    {
+        return self::nestingEnabled() && Config::boolean('teams.nesting.inherit_roles_down');
     }
 
     /**

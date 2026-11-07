@@ -16,6 +16,13 @@ use RoundlyConsulting\Teams\Testing\TeamsFake;
  * @method static \RoundlyConsulting\Teams\Handles\JoinRequests joinRequests()
  * @method static \RoundlyConsulting\Teams\Roles\Contracts\RoleProvider roles()
  * @method static \RoundlyConsulting\Teams\Roles\PermissionRegistry permissions()
+ * @method static \RoundlyConsulting\Teams\Models\Team|null current()
+ * @method static \Illuminate\Database\Eloquent\Collection<int, \RoundlyConsulting\Teams\Models\Team> currentMany()
+ * @method static void setCurrent(?\RoundlyConsulting\Teams\Models\Team $team)
+ * @method static void setCurrentMany(iterable<\RoundlyConsulting\Teams\Models\Team> $teams, ?\Illuminate\Database\Eloquent\Model $user = null)
+ * @method static mixed runAs(\RoundlyConsulting\Teams\Models\Team $team, \Closure $callback)
+ * @method static mixed withoutTeamScope(\Closure $callback)
+ * @method static list<\RoundlyConsulting\Teams\DataTransferObjects\ScopedModelReport> scopedModels()
  * @method static list<\RoundlyConsulting\Teams\Testing\RecordedTeamOperation> recorded(?\RoundlyConsulting\Teams\Enums\TeamOperation $operation = null)
  * @method static void assertNothingRecorded()
  * @method static void assertTeamCreated(?string $name = null)
@@ -51,6 +58,8 @@ use RoundlyConsulting\Teams\Testing\TeamsFake;
  * @method static void assertMembersPruned()
  * @method static void assertJoinRequestsExpired()
  * @method static void assertNothingPruned()
+ * @method static void assertTeamMoved(\RoundlyConsulting\Teams\Models\Team $team, ?\RoundlyConsulting\Teams\Models\Team $under = null)
+ * @method static void assertNothingMoved()
  *
  * The `assert*` / `recorded` methods exist only on the fake — call `Teams::fake()` first.
  *

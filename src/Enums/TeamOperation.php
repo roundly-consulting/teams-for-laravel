@@ -67,4 +67,7 @@ enum TeamOperation: string
 
     /** MembershipExpiringSoon was dispatched for memberships lapsing soon. */
     case NotifyExpiringMembers = 'notify-expiring-members';
+
+    /** A team was placed under a new parent team, or detached to a root. */
+    case MoveTeam = 'move-team';
 }

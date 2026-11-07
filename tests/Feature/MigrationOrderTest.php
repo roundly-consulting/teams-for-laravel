@@ -10,7 +10,7 @@ use RoundlyConsulting\Teams\Tests\User;
 use RoundlyConsulting\Testing\Database\DriverMatrix;
 
 /**
- * M + P + R for the six team tables.
+ * M + P + R for the six team tables and the additive nesting migration.
  *
  * This file replaces ~150 lines of hand-rolled reinvention: the suite published its own
  * migrations into a temp directory, built its own throwaway database, ran `migrate` against
@@ -36,7 +36,8 @@ $migrations = __DIR__.'/../../database/migrations';
  * earlier one has not created yet is uninstallable in a host. Five packages shipped exactly
  * that under green SQLite suites; this was one of them.
  *
- * `foreignKeys: 5` pins the edge count: `team_invites`, `team_members`,
+ * `foreignKeys: 6` pins the edge count: `teams.parent_id` constrains onto `teams` itself
+ * (nested teams, 0007), and `team_invites`, `team_members`,
  * `team_join_requests` and `team_role_overrides` each constrain `team_id` onto `teams`, and
  * `team_members` additionally constrains `accepted_invite_id` onto `team_invites`.
  *
@@ -51,13 +52,13 @@ $migrations = __DIR__.'/../../database/migrations';
  * live in any host table.
  */
 it('has a runnable migration order', function () use ($migrations): void {
-    expect($migrations)->toHaveRunnableMigrationOrder(foreignKeys: 5);
+    expect($migrations)->toHaveRunnableMigrationOrder(foreignKeys: 6);
 });
 
 /**
  * P — the publish-only guards. The fleet publishes migrations timestamped rather than
  * auto-loading them; doing both runs both copies and dies on a duplicate table (bug #5, on
- * three packages). `count: 6` pins the file count so neither check can pass over an empty or
+ * three packages). `count: 7` pins the file count so neither check can pass over an empty or
  * relocated directory.
  */
 it('never auto-loads its migrations — the host publishes them', function (): void {
@@ -65,7 +66,7 @@ it('never auto-loads its migrations — the host publishes them', function (): v
 });
 
 it('publishes every migration timestamp-injected into the host', function (): void {
-    expect(TeamsServiceProvider::class)->toPublishMigrationsTimestamped('teams-migrations', 6);
+    expect(TeamsServiceProvider::class)->toPublishMigrationsTimestamped('teams-migrations', 7);
 });
 
 /**

@@ -6,6 +6,19 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+### Added
+
+- Per-team data isolation for multi-tenant apps. Everything is opt-in; existing `BelongsToTeam`, `HasTeams`, roles and queries behave exactly as before.
+- Current team context: `Teams::current()`, `Teams::currentMany()`, `Teams::setCurrent()`, `Teams::setCurrentMany()` (only teams the user is an active member of), `Teams::runAs()` (restores the previous context, also on an exception) and `Teams::for($team)->run()`. The context rides Laravel's hidden Context, so queued jobs restore the team(s) they were dispatched with; console commands and scheduled tasks start without one. `TeamContextSet` fires on every change.
+- `teams.context` route middleware: binds the team by its route key (`{team:slug}` works), lets through only active members, answers 404 (or 403 via `teams.context.deny_status`) to everyone else, and runs before `SubstituteBindings` so team-scoped route models bind inside the context.
+- `ScopedToTeam` model trait: a global scope that fails closed (no context → no rows, or `TeamContextException` with `teams.scoping.without_context = throw`), stamps new rows with the current team and refuses any write for another team. Escape hatches: `Model::withoutTeamScope()`, `Model::forTeam($team)`, `Teams::withoutTeamScope(fn () => …)`. Per-model column via `const TEAM_COLUMN`.
+- `$table->teamScope()` migration macro: the team column typed like the team model's key, indexed and constrained onto `teams`.
+- `UniqueInTeam` validation rule, `Team::scopedKey()` for per-team cache keys and storage paths, and `Team::isAccessibleBy()`.
+- `php artisan teams:doctor` and `Teams::scopedModels()`: fail when a scoped table lacks its team column or an index on it.
+- `InteractsWithTeams` testing trait with `actingInTeam($user, $team)`.
+- Nested teams (off by default, `teams.nesting.*`): an additive, nullable `teams.parent_id` migration, `Teams::for($team)->moveUnder()` / `moveToRoot()`, `parent()`, `children()`, `root()`, `ancestors()`, `descendants()`, `depth()`, cycle and `max_depth` checks, the `TeamMoved` event and `TeamsFake::assertTeamMoved()`. With `inherit_roles_down` a role held on a team applies on every team below it, in permission and role checks, the Gate, Blade directives, team policies and the context middleware.
+- Upgrading: re-run `php artisan vendor:publish --tag=teams-migrations` to add the nesting migration, then `php artisan migrate`.
+
 ## 1.0.4 - 2026-10-17
 
 ### Fixed

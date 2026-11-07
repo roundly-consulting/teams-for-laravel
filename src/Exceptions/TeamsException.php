@@ -27,4 +27,13 @@ class TeamsException extends RuntimeException
     {
         return new self(trans_choice('teams::errors.max_seats_reached', $maxSeats));
     }
+
+    /**
+     * A `Team::scopedKey()` suffix with a `.` or `..` segment (or a NUL byte) — it could
+     * climb out of the team's own prefix.
+     */
+    public static function unsafeScopedKey(string $suffix): self
+    {
+        return new self((string) trans('teams::errors.unsafe_scoped_key', ['suffix' => $suffix]));
+    }
 }

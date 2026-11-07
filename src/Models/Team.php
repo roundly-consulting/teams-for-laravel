@@ -18,12 +18,16 @@ use RoundlyConsulting\Connections\Contracts\Connectable;
 use RoundlyConsulting\Contacts\Concerns\HasContacts;
 use RoundlyConsulting\Options\Traits\HasOptions;
 use RoundlyConsulting\Teams\Database\Factories\TeamFactory;
+use RoundlyConsulting\Teams\Exceptions\TeamContextException;
+use RoundlyConsulting\Teams\Exceptions\TeamsException;
+use RoundlyConsulting\Teams\Models\Concerns\NestsTeams;
 use RoundlyConsulting\Teams\Roles\Permission;
 use RoundlyConsulting\Teams\Roles\Role;
 use RoundlyConsulting\Teams\Support\InviteModel;
 use RoundlyConsulting\Teams\Support\JoinRequestModel;
 use RoundlyConsulting\Teams\Support\MemberModel;
 use RoundlyConsulting\Teams\Support\TeamRoleModel;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 use RoundlyConsulting\Teams\TeamsManager;
 
 /**
@@ -32,6 +36,7 @@ use RoundlyConsulting\Teams\TeamsManager;
  * @property bool $is_public
  * @property string|null $owner_type
  * @property int|null $owner_id
+ * @property int|null $parent_id
  * @property Collection<string, mixed> $meta
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
@@ -58,6 +63,7 @@ class Team extends Model implements Connectable
     use HasFactory;
 
     use HasOptions;
+    use NestsTeams;
     use SoftDeletes;
 
     /** @var string */
@@ -156,6 +162,15 @@ class Team extends Model implements Connectable
      */
     public function memberHasRole(Model $member, string $role): bool
     {
+        if (TeamsConfig::inheritRolesDown()) {
+            return MemberModel::query()
+                ->active()
+                ->whereIn('team_id', $this->governingTeamKeys())
+                ->whereMorphedTo('member', $member)
+                ->where('role', $role)
+                ->exists();
+        }
+
         return $this->members()
             ->active()
             ->whereMorphedTo('member', $member)
@@ -163,8 +178,26 @@ class Team extends Model implements Connectable
             ->exists();
     }
 
+    /**
+     * Whether the model's role on this team grants `$permission`. With
+     * `teams.nesting.inherit_roles_down` on, a role held on any team above this one
+     * counts too, resolved against that team's own role set.
+     */
     public function memberHasPermission(Model $member, string $permission): bool
     {
+        if (TeamsConfig::inheritRolesDown()) {
+            /** @var Collection<int, Member> $memberships */
+            $memberships = MemberModel::query()
+                ->active()
+                ->whereIn('team_id', $this->governingTeamKeys())
+                ->whereMorphedTo('member', $member)
+                ->get();
+
+            return $memberships->contains(
+                static fn (Member $membership): bool => $membership->role()?->hasPermission($permission) === true,
+            );
+        }
+
         $found = $this->findMember($member);
 
         if ($found === null || $found->isExpired()) {
@@ -178,6 +211,66 @@ class Team extends Model implements Connectable
         }
 
         return $role->hasPermission($permission);
+    }
+
+    /**
+     * Whether the model may act inside this team: an active (unexpired) membership of
+     * this team — or, with `teams.nesting.inherit_roles_down` on, of a team above it. The
+     * `teams.context` middleware and `Teams::setCurrentMany()` decide access with this.
+     */
+    public function isAccessibleBy(Model $user): bool
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        return MemberModel::query()
+            ->active()
+            ->whereIn('team_id', $this->governingTeamKeys())
+            ->whereMorphedTo('member', $user)
+            ->exists();
+    }
+
+    /**
+     * A key or path prefix unique to this team, so caches and stored files of two teams
+     * can never collide: `$team->scopedKey('files')` → `teams/42/files`. Built from the
+     * primary key, which never changes, rather than a renameable slug. A `.` or `..`
+     * segment is refused — a scoped path must not climb into another team's.
+     */
+    public function scopedKey(string $suffix = ''): string
+    {
+        $key = $this->getKey();
+
+        if (! $this->exists || ! is_scalar($key)) {
+            throw TeamContextException::unsavedTeam();
+        }
+
+        $suffix = trim($suffix, '/');
+
+        foreach (preg_split('#[/\\\\]#', $suffix) ?: [] as $segment) {
+            if ($segment === '.' || $segment === '..' || str_contains($segment, "\0")) {
+                throw TeamsException::unsafeScopedKey($suffix);
+            }
+        }
+
+        return 'teams/'.$key.($suffix === '' ? '' : '/'.$suffix);
+    }
+
+    /**
+     * This team's key, followed by its ancestors' when roles inherit down.
+     *
+     * @return list<int|string>
+     */
+    private function governingTeamKeys(): array
+    {
+        $teams = TeamsConfig::inheritRolesDown()
+            ? $this->ancestors()->prepend($this)
+            : new Collection([$this]);
+
+        /** @var list<int|string> $keys */
+        $keys = $teams->map(static fn (Team $team): mixed => $team->getKey())->values()->all();
+
+        return $keys;
     }
 
     /**

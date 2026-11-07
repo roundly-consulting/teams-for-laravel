@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Handles;
 
+use Closure;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use RoundlyConsulting\Addresses\AddressBook;
 use RoundlyConsulting\Addresses\Facades\Addresses;
 use RoundlyConsulting\Connections\Facades\Connections;
 use RoundlyConsulting\Connections\PendingConnection;
 use RoundlyConsulting\Contacts\ContactBook;
 use RoundlyConsulting\Contacts\Facades\Contacts;
+use RoundlyConsulting\Teams\Actions\MoveTeamAction;
 use RoundlyConsulting\Teams\Actions\TransferOwnershipAction;
 use RoundlyConsulting\Teams\Enums\TeamOperation;
 use RoundlyConsulting\Teams\Models\Team;
@@ -63,6 +66,37 @@ final readonly class TeamHandle
     }
 
     /**
+     * Place the team under `$parent` (nested teams, `teams.nesting.enabled`). Rejects a
+     * cycle and a subtree deeper than `teams.nesting.max_depth`.
+     */
+    public function moveUnder(Team $parent): Team
+    {
+        return $this->move($parent);
+    }
+
+    /**
+     * Detach the team from its parent; it becomes a root team.
+     */
+    public function moveToRoot(): Team
+    {
+        return $this->move(null);
+    }
+
+    /**
+     * Run `$callback` with this team as the current team, then restore the previous
+     * context — `Teams::runAs($team, $callback)`.
+     *
+     * @template TResult
+     *
+     * @param  Closure(Team): TResult  $callback
+     * @return (TResult is PendingDispatch ? null : TResult)
+     */
+    public function run(Closure $callback): mixed
+    {
+        return $this->manager->runAs($this->team, $callback);
+    }
+
+    /**
      * Typed access to the team's governance settings (join policy, seat cap, default
      * member role, require-approval switch), backed by the options package.
      */
@@ -99,5 +133,15 @@ final readonly class TeamHandle
     public function team(): Team
     {
         return $this->team;
+    }
+
+    private function move(?Team $parent): Team
+    {
+        return $this->manager->perform(
+            TeamOperation::MoveTeam,
+            MoveTeamAction::class,
+            fn (MoveTeamAction $action): Team => $action->execute($this->team, $parent),
+            ['team' => $this->team, 'parent' => $parent],
+        );
     }
 }

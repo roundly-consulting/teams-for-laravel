@@ -6,6 +6,8 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+## 1.1.0 - 2026-11-07
+
 ### Added
 
 - Per-team data isolation for multi-tenant apps. Everything is opt-in; existing `BelongsToTeam`, `HasTeams`, roles and queries behave exactly as before.
@@ -18,6 +20,11 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 - `InteractsWithTeams` testing trait with `actingInTeam($user, $team)`.
 - Nested teams (off by default, `teams.nesting.*`): an additive, nullable `teams.parent_id` migration, `Teams::for($team)->moveUnder()` / `moveToRoot()`, `parent()`, `children()`, `root()`, `ancestors()`, `descendants()`, `depth()`, cycle and `max_depth` checks, the `TeamMoved` event and `TeamsFake::assertTeamMoved()`. With `inherit_roles_down` a role held on a team applies on every team below it, in permission and role checks, the Gate, Blade directives, team policies and the context middleware.
 - Upgrading: re-run `php artisan vendor:publish --tag=teams-migrations` to add the nesting migration, then `php artisan migrate`.
+
+### Changed
+
+- Documentation: the README pitch mentions per-team data isolation and nested teams.
+- Maintenance: dev dependency `roundly-consulting/testing-for-laravel` `^1.6`; the real-engine CI legs run on tmpfs.
 
 ## 1.0.4 - 2026-10-17
 

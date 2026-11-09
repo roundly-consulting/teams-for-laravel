@@ -27,7 +27,8 @@ final class TeamExpectations
             /** @var Model $user */
             $user = $this->value;
 
-            expect($team->hasMember($user))->toBeTrue();
+            // A membership row, an expired one included (what hasMember() always checked).
+            expect($team->findMember($user))->not->toBeNull();
 
             return $this;
         });

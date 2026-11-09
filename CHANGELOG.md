@@ -6,6 +6,18 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+### Added
+
+- `Team::hasActiveMember()`, `Teams::for($team)->members()->hasActive()` and `HasTeams::isActiveMemberOf()`: membership checks that ignore expired memberships.
+
+### Deprecated
+
+- `Team::hasMember()` and `Teams::for($team)->members()->has()`: they check only that a membership row exists, so an expired membership still counts. Use `hasActiveMember()` / `hasActive()`.
+
+### Planned for the next major
+
+- `hasMember()`, `members()->has()`, `belongsToTeam()` and `isMemberOf()` ignore expired memberships, like `hasActiveMember()`.
+
 ## 2.0.0 - 2026-11-07
 
 ### Changed

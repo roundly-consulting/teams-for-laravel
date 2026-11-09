@@ -26,6 +26,10 @@ trait HasTeams
         return $this->morphMany(TeamModel::class(), 'owner');
     }
 
+    /**
+     * Whether a membership row exists for this model — an expired one included. For "is a
+     * member right now", use isActiveMemberOf().
+     */
     public function belongsToTeam(Team $team): bool
     {
         return $this->teams()
@@ -33,9 +37,21 @@ trait HasTeams
             ->exists();
     }
 
+    /**
+     * Same as belongsToTeam(): a membership row, an expired one included.
+     */
     public function isMemberOf(Team $team): bool
     {
         return $this->belongsToTeam($team);
+    }
+
+    /**
+     * Whether this model is a member of `$team` right now: a membership that has not
+     * expired.
+     */
+    public function isActiveMemberOf(Team $team): bool
+    {
+        return $team->hasActiveMember($this);
     }
 
     public function ownsTeam(Team $team): bool

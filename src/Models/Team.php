@@ -149,6 +149,13 @@ class Team extends Model implements Connectable
         });
     }
 
+    /**
+     * Whether a membership ROW exists for the model — an expired one included, kept for
+     * audit until pruned. Not an access check.
+     *
+     * @deprecated Use hasActiveMember(), which honours expiry (and start dates). The next
+     *             major makes hasMember() honour them too.
+     */
     public function hasMember(Model $member): bool
     {
         return $this->members()
@@ -157,8 +164,21 @@ class Team extends Model implements Connectable
     }
 
     /**
+     * Whether the model is a member of this team right now: a membership that has not
+     * expired. A direct membership only — for "may act in this team", which with
+     * `teams.nesting.inherit_roles_down` also counts a team above, use isAccessibleBy().
+     */
+    public function hasActiveMember(Model $member): bool
+    {
+        return $this->members()
+            ->active()
+            ->whereMorphedTo('member', $member)
+            ->exists();
+    }
+
+    /**
      * Whether the model holds `$role` on this team right now. An expired membership
-     * holds no role (its row stays for audit until pruned — see hasMember()).
+     * holds no role (its row stays for audit until pruned).
      */
     public function memberHasRole(Model $member, string $role): bool
     {

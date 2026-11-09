@@ -86,9 +86,24 @@ final readonly class TeamMembers
         return $this->team->members()->get();
     }
 
+    /**
+     * Whether a membership row exists — an expired one included.
+     *
+     * @deprecated Use hasActive(), which honours expiry (and start dates). The next major
+     *             makes has() honour them too.
+     */
     public function has(Model $member): bool
     {
         return $this->team->hasMember($member);
+    }
+
+    /**
+     * Whether the model is a member of the team right now: a membership that has not
+     * expired.
+     */
+    public function hasActive(Model $member): bool
+    {
+        return $this->team->hasActiveMember($member);
     }
 
     public function find(Model $member): ?Member

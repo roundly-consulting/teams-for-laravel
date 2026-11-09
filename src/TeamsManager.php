@@ -14,9 +14,11 @@ use RoundlyConsulting\Teams\Actions\InspectTeamScopesAction;
 use RoundlyConsulting\Teams\Actions\RunAsTeamAction;
 use RoundlyConsulting\Teams\Actions\SetCurrentTeamAction;
 use RoundlyConsulting\Teams\Actions\SetCurrentTeamsAction;
+use RoundlyConsulting\Teams\Actions\SwitchTeamAction;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\DataTransferObjects\ScopedModelReport;
 use RoundlyConsulting\Teams\Enums\TeamOperation;
+use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Handles\Invites;
 use RoundlyConsulting\Teams\Handles\JoinRequests;
 use RoundlyConsulting\Teams\Handles\Members;
@@ -128,10 +130,27 @@ class TeamsManager
     /**
      * Make `$team` the current team (null clears the context). Team-scoped models then
      * read and write only its rows; jobs dispatched from here on carry it along.
+     *
+     * UNCHECKED — no membership check. For system code acting for a team (a webhook, a
+     * command, a seeder); for a team a user picked, use {@see self::switchTo()}.
      */
     public function setCurrent(?Team $team): void
     {
         $this->container->make(SetCurrentTeamAction::class)->execute($team);
+    }
+
+    /**
+     * The CHECKED `setCurrent()`: make `$team` the current team only when `$user` — by
+     * default the authenticated user — may act in it (an active membership, or one on a
+     * team above with roles inheriting down); otherwise throw and leave the context alone.
+     * The context remembers `$user`, so queued jobs can re-check it
+     * (`teams.context.recheck_queued_jobs`).
+     *
+     * @throws TeamContextException
+     */
+    public function switchTo(Team $team, ?Model $user = null): void
+    {
+        $this->container->make(SwitchTeamAction::class)->execute($team, $user);
     }
 
     /**

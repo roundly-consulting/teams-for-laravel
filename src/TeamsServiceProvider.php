@@ -12,6 +12,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\ForeignKeyDefinition;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Log\Context\Events\ContextHydrated;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
@@ -25,6 +26,7 @@ use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\PackageToolkit\Support\Config;
+use RoundlyConsulting\Teams\Actions\RecheckTeamContextAction;
 use RoundlyConsulting\Teams\Commands\DoctorCommand;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
@@ -35,6 +37,7 @@ use RoundlyConsulting\Teams\Commands\PruneJoinRequestsCommand;
 use RoundlyConsulting\Teams\Commands\PruneMembersCommand;
 use RoundlyConsulting\Teams\Commands\ResendInviteCommand;
 use RoundlyConsulting\Teams\Events\TeamContextSet;
+use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Http\Middleware\SetTeamContext;
 use RoundlyConsulting\Teams\Listeners\SyncJoinRequestStatusFromApproval;
 use RoundlyConsulting\Teams\Models\Team;
@@ -187,17 +190,49 @@ final class TeamsServiceProvider extends PackageServiceProvider
     /**
      * A queued job restores its dispatcher's team context through Laravel's Context
      * hydration; announce it like any other context change.
+     *
+     * With `teams.context.recheck_queued_jobs` on, the acting member is checked again first,
+     * against the database as it is NOW — a membership removed or lapsed after dispatch is
+     * caught. A failed check clears the context (fail closed) and is never announced; the
+     * JobProcessing listener below then fails the job before it runs. That listener is
+     * registered after the framework's own hydrating one, so it always sees the outcome.
      */
     private function announceRestoredContext(): void
     {
         Event::listen(ContextHydrated::class, function (ContextHydrated $event): void {
+            $context = $this->app->make(TeamContext::class);
+
+            // A revocation belongs to the hydration that found it, never to a later one.
+            $context->pullRevocation();
+
             if (! $event->context->hasHidden(TeamContext::KEYS)) {
                 return;
             }
 
-            $context = $this->app->make(TeamContext::class);
+            if (TeamsConfig::recheckQueuedJobs()) {
+                try {
+                    $this->app->make(RecheckTeamContextAction::class)->execute();
+                } catch (TeamContextException $exception) {
+                    $context->revoke($exception);
+
+                    return;
+                }
+            }
 
             TeamContextSet::dispatch($context->teams(), $context->isMultiple(), true);
+        });
+
+        Event::listen(JobProcessing::class, function (JobProcessing $event): void {
+            $revocation = $this->app->make(TeamContext::class)->pullRevocation();
+
+            if ($revocation === null) {
+                return;
+            }
+
+            // Failed, not released: a revoked membership does not come back on a retry.
+            $event->job->fail($revocation);
+
+            throw $revocation;
         });
     }
 
@@ -297,9 +332,10 @@ final class TeamsServiceProvider extends PackageServiceProvider
             'Gate' => $this->gate(),
             'Notification queue' => TeamsConfig::isUnset('teams.notifications.queue_connection') ? 'DEFAULT' : 'SET',
             'Team context' => self::orInvalid(static fn (): string => sprintf(
-                'route parameter %s, non-members get %d',
+                'route parameter %s, non-members get %d, queued jobs re-check membership %s',
                 TeamsConfig::contextRouteParameter() !== 'team' ? 'SET' : 'DEFAULT',
                 TeamsConfig::contextDenyStatus(),
+                TeamsConfig::recheckQueuedJobs() ? 'ON' : 'OFF',
             )),
             'Team scoping' => self::orInvalid(static fn (): string => TeamsConfig::throwWithoutContext()
                 ? 'throw without a context'

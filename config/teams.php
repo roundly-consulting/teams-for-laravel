@@ -216,11 +216,21 @@ return [
     | current team. "deny_status" is what a non-member gets: 404 (the
     | default — another team's existence is not revealed) or 403.
     |
+    | A context set through a membership check (the middleware,
+    | Teams::switchTo(), Teams::setCurrentMany()) remembers the member it
+    | was checked for, and queued jobs dispatched from it carry that member.
+    | With "recheck_queued_jobs" on, such a job checks the membership again
+    | before it runs and fails (TeamContextException, no retry) when the
+    | member was removed, expired or deleted in the meantime. Contexts set
+    | with the unchecked Teams::setCurrent() carry no member and are not
+    | re-checked.
+    |
     */
 
     'context' => [
         'route_parameter' => env('TEAMS_CONTEXT_ROUTE_PARAMETER', 'team'),
         'deny_status' => env('TEAMS_CONTEXT_DENY_STATUS', 404),
+        'recheck_queued_jobs' => env('TEAMS_CONTEXT_RECHECK_QUEUED_JOBS', false),
     ],
 
     /*

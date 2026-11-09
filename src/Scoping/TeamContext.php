@@ -7,8 +7,10 @@ namespace RoundlyConsulting\Teams\Scoping;
 use Closure;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Log\Context\Repository;
 use Illuminate\Support\Collection as BaseCollection;
+use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Support\TeamModel;
 
@@ -21,6 +23,12 @@ use RoundlyConsulting\Teams\Support\TeamModel;
  * the team(s) of the code that dispatched it, and a job dispatched without one runs
  * without one. Hidden, so the keys never reach a log line. A fresh console process or a
  * scheduled task starts with an empty Context, hence no team.
+ *
+ * A context set through a membership check (`Teams::switchTo()`, `Teams::setCurrentMany()`,
+ * the `teams.context` middleware) also records WHO it was checked for — the acting member,
+ * as a morph type + key in the same hidden Context — so a queued job can check that member
+ * again when it starts (`teams.context.recheck_queued_jobs`). An unchecked
+ * `Teams::setCurrent()` records none: it is system code acting for the team.
  *
  * What stays in this object is per-process only: the loaded Team models (a cache keyed by
  * the context it was loaded for) and the `withoutTeamScope()` bypass depth, which must
@@ -36,6 +44,15 @@ final class TeamContext
 
     /** Hidden Context key holding whether the keys are a multi-team set. */
     public const string MULTIPLE = 'roundly-teams.context.multiple';
+
+    /** Hidden Context key holding the acting member the context was checked for. */
+    public const string ACTOR = 'roundly-teams.context.actor';
+
+    /**
+     * Set when a restored context failed its re-check: the context is already cleared,
+     * and the queue listener fails the job with this before it runs.
+     */
+    private ?TeamContextException $revocation = null;
 
     private int $bypassDepth = 0;
 
@@ -100,15 +117,25 @@ final class TeamContext
     }
 
     /**
-     * @param  BaseCollection<int, Team>  $teams  saved teams, already de-duplicated
+     * The member this context was checked for, or null for an unchecked context.
      */
-    public function set(BaseCollection $teams, bool $multiple): void
+    public function actor(): ?ContextActor
+    {
+        return ContextActor::fromStored($this->repository()->getHidden(self::ACTOR));
+    }
+
+    /**
+     * @param  BaseCollection<int, Team>  $teams  saved teams, already de-duplicated
+     * @param  Model|null  $actor  the member the teams were checked for; null for an unchecked context
+     */
+    public function set(BaseCollection $teams, bool $multiple, ?Model $actor = null): void
     {
         /** @var list<int|string> $keys */
         $keys = $teams->map(static fn (Team $team): int|string => self::keyOf($team))->values()->all();
 
         $this->repository()->addHidden(self::KEYS, $keys);
         $this->repository()->addHidden(self::MULTIPLE, $multiple);
+        $this->storeActor($actor === null ? null : ContextActor::of($actor));
 
         $this->loaded = new Collection($teams->values()->all());
         $this->loadedFor = self::fingerprint($keys);
@@ -118,6 +145,7 @@ final class TeamContext
     {
         $this->repository()->forgetHidden(self::KEYS);
         $this->repository()->forgetHidden(self::MULTIPLE);
+        $this->repository()->forgetHidden(self::ACTOR);
 
         $this->loaded = new Collection;
         $this->loadedFor = null;
@@ -169,7 +197,7 @@ final class TeamContext
 
     public function snapshot(): ContextSnapshot
     {
-        return new ContextSnapshot($this->keys(), $this->isMultiple());
+        return new ContextSnapshot($this->keys(), $this->isMultiple(), $this->actor());
     }
 
     public function restore(ContextSnapshot $snapshot): void
@@ -182,6 +210,29 @@ final class TeamContext
 
         $this->repository()->addHidden(self::KEYS, $snapshot->keys);
         $this->repository()->addHidden(self::MULTIPLE, $snapshot->multiple);
+        $this->storeActor($snapshot->actor);
+    }
+
+    /**
+     * Fail the restored context closed: clear it and keep the reason for the queue
+     * listener, which fails the job with it before the job runs.
+     */
+    public function revoke(TeamContextException $reason): void
+    {
+        $this->clear();
+
+        $this->revocation = $reason;
+    }
+
+    /**
+     * The pending revocation, once: the job it belongs to is failed with it.
+     */
+    public function pullRevocation(): ?TeamContextException
+    {
+        $reason = $this->revocation;
+        $this->revocation = null;
+
+        return $reason;
     }
 
     /**
@@ -217,6 +268,17 @@ final class TeamContext
         $key = $team->getKey();
 
         return is_int($key) || is_string($key) ? $key : (string) $key;
+    }
+
+    private function storeActor(?ContextActor $actor): void
+    {
+        if ($actor === null) {
+            $this->repository()->forgetHidden(self::ACTOR);
+
+            return;
+        }
+
+        $this->repository()->addHidden(self::ACTOR, $actor->toStored());
     }
 
     /**

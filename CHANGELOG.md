@@ -8,7 +8,14 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ### Added
 
+- `Teams::switchTo($team, ?$user)`: the checked way to set the current team. It sets the team only when the user (by default the authenticated one) holds an active membership of it, or of a team above it when roles inherit down. Otherwise it throws `TeamContextException` and leaves the context as it was. Use it for any team a user picked; `Teams::setCurrent()` stays the unchecked call for system code.
+- Queued jobs can check the membership again when they start (`teams.context.recheck_queued_jobs`, off by default). A context set through a membership check (the `teams.context` middleware, `Teams::switchTo()`, `Teams::setCurrentMany()`) remembers the member it was checked for, and jobs dispatched from it carry that member. With the option on, a job whose member was removed, expired or deleted after dispatch (or whose team was deleted) fails with `TeamContextException` before it runs. It is not retried, and its context is cleared. Contexts set with `Teams::setCurrent()` are not re-checked.
 - `Team::hasActiveMember()`, `Teams::for($team)->members()->hasActive()` and `HasTeams::isActiveMemberOf()`: membership checks that ignore expired memberships.
+
+### Changed
+
+- The `teams.context` middleware sets the team through `Teams::switchTo()`. It runs the same membership check and returns the same deny status as before; the context now also remembers the user.
+- Documentation: `Teams::setCurrent()` is marked as unchecked, for system code only.
 
 ### Deprecated
 
@@ -16,6 +23,7 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ### Planned for the next major
 
+- `teams.context.recheck_queued_jobs` on by default.
 - `hasMember()`, `members()->has()`, `belongsToTeam()` and `isMemberOf()` ignore expired memberships, like `hasActiveMember()`.
 
 ## 2.0.0 - 2026-11-07

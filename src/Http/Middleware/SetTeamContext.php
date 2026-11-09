@@ -29,6 +29,8 @@ use Symfony\Component\HttpFoundation\Response;
  * - The package pins this middleware before `SubstituteBindings` in the priority list,
  *   so team-scoped route models (`/teams/{team}/tickets/{ticket}`) are bound INSIDE the
  *   context instead of failing closed outside it.
+ * - The context remembers the user it was checked for, so with
+ *   `teams.context.recheck_queued_jobs` the jobs this request dispatches re-check it.
  * - The context lives for the rest of the request (streamed responses and after-response
  *   jobs included); Octane and the queue worker start every request and job fresh.
  */
@@ -53,13 +55,19 @@ final readonly class SetTeamContext
         $team = $this->bind($route->parameter($parameter), $route->bindingFieldFor($parameter));
         $user = $request->user();
 
-        if ($team === null || ! $user instanceof Model || ! $team->isAccessibleBy($user)) {
+        if ($team === null || ! $user instanceof Model) {
+            abort(TeamsConfig::contextDenyStatus());
+        }
+
+        // The checked switch: one membership check, and the context remembers the user so
+        // queued jobs dispatched by this request can re-check it.
+        try {
+            $this->teams->switchTo($team, $user);
+        } catch (TeamContextException) {
             abort(TeamsConfig::contextDenyStatus());
         }
 
         $route->setParameter($parameter, $team);
-
-        $this->teams->setCurrent($team);
 
         return $next($request);
     }

@@ -56,6 +56,31 @@ final class TeamContextException extends TeamsException
     }
 
     /**
+     * `Teams::switchTo()` needs a user to check the membership against.
+     */
+    public static function noUserToSwitch(): self
+    {
+        return new self((string) trans('teams::errors.context_switch_no_user'));
+    }
+
+    /**
+     * A queued job's restored context failed its re-check: the member it was set for no
+     * longer holds an active membership of `$team` (removed, expired, or the team is gone).
+     */
+    public static function revoked(int|string $team): self
+    {
+        return new self((string) trans('teams::errors.context_revoked', ['team' => (string) $team]));
+    }
+
+    /**
+     * A queued job's restored context names a member that no longer exists.
+     */
+    public static function actorMissing(): self
+    {
+        return new self((string) trans('teams::errors.context_actor_missing'));
+    }
+
+    /**
      * A team that was never saved has no key to scope by.
      */
     public static function unsavedTeam(): self

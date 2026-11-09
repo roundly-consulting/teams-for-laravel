@@ -21,6 +21,9 @@ use RoundlyConsulting\Teams\Support\MemberModel;
  * Every team must be one `$user` (default: the authenticated user) may act in — an active
  * membership, or with `teams.nesting.inherit_roles_down` one on a team above. One team
  * outside that throws and leaves the context untouched: the set is all or nothing.
+ *
+ * The context records `$user` as its acting member, so jobs dispatched from here can check
+ * that member again when they start (`teams.context.recheck_queued_jobs`).
  */
 final readonly class SetCurrentTeamsAction
 {
@@ -62,7 +65,7 @@ final readonly class SetCurrentTeamsAction
             }
         }
 
-        $this->context->set($unique, multiple: true);
+        $this->context->set($unique, multiple: true, actor: $user);
 
         TeamContextSet::dispatch($unique, true);
     }

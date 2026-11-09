@@ -176,6 +176,15 @@ final class TeamsConfig
     }
 
     /**
+     * Whether a queued job re-checks, before it runs, that the member its team context was
+     * set for may still act in it. Off by default.
+     */
+    public static function recheckQueuedJobs(): bool
+    {
+        return Config::boolean('teams.context.recheck_queued_jobs');
+    }
+
+    /**
      * Whether a scoped query without a team context throws instead of returning no rows.
      */
     public static function throwWithoutContext(): bool

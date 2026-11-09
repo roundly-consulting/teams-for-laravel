@@ -12,8 +12,12 @@ use RoundlyConsulting\Teams\Scoping\TeamContext;
 
 /**
  * Make `$team` the current team of this request, job or command — or clear the context
- * with null. No membership check: system code (a webhook, a command) may act for any
- * team. The `teams.context` middleware checks membership before it calls this.
+ * with null.
+ *
+ * UNCHECKED: no membership check at all. It is for system code (a webhook, a command, a
+ * seeder) acting for a team, never for a team id a user supplied — use
+ * {@see SwitchTeamAction} (`Teams::switchTo()`) for that. The context records no acting
+ * member, so `teams.context.recheck_queued_jobs` has nobody to re-check for it.
  */
 final readonly class SetCurrentTeamAction
 {

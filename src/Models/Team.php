@@ -165,7 +165,7 @@ class Team extends Model implements Connectable
 
     /**
      * Whether the model is a member of this team right now: a membership that has not
-     * expired. A direct membership only — for "may act in this team", which with
+     * expired and — with `teams.members.start_dates` on — has started. A direct membership only — for "may act in this team", which with
      * `teams.nesting.inherit_roles_down` also counts a team above, use isAccessibleBy().
      */
     public function hasActiveMember(Model $member): bool
@@ -220,7 +220,7 @@ class Team extends Model implements Connectable
 
         $found = $this->findMember($member);
 
-        if ($found === null || $found->isExpired()) {
+        if ($found === null || ! $found->isActive()) {
             return false;
         }
 
@@ -333,9 +333,14 @@ class Team extends Model implements Connectable
     }
 
     /** @param array<string, mixed> $meta */
-    public function addMember(Model $member, string $role, array $meta = [], ?CarbonInterface $expiresAt = null): Member
-    {
-        return app(TeamsManager::class)->for($this)->members()->add($member, $role, $meta, $expiresAt);
+    public function addMember(
+        Model $member,
+        string $role,
+        array $meta = [],
+        ?CarbonInterface $expiresAt = null,
+        ?CarbonInterface $startsAt = null,
+    ): Member {
+        return app(TeamsManager::class)->for($this)->members()->add($member, $role, $meta, $expiresAt, $startsAt);
     }
 
     public function removeMember(Model $member): bool

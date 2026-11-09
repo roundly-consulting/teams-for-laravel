@@ -11,6 +11,8 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 - `Teams::switchTo($team, ?$user)`: the checked way to set the current team. It sets the team only when the user (by default the authenticated one) holds an active membership of it, or of a team above it when roles inherit down. Otherwise it throws `TeamContextException` and leaves the context as it was. Use it for any team a user picked; `Teams::setCurrent()` stays the unchecked call for system code.
 - Queued jobs can check the membership again when they start (`teams.context.recheck_queued_jobs`, off by default). A context set through a membership check (the `teams.context` middleware, `Teams::switchTo()`, `Teams::setCurrentMany()`) remembers the member it was checked for, and jobs dispatched from it carry that member. With the option on, a job whose member was removed, expired or deleted after dispatch (or whose team was deleted) fails with `TeamContextException` before it runs. It is not retried, and its context is cleared. Contexts set with `Teams::setCurrent()` are not re-checked.
 - `Team::hasActiveMember()`, `Teams::for($team)->members()->hasActive()` and `HasTeams::isActiveMemberOf()`: membership checks that ignore expired memberships.
+- Membership start dates (`teams.members.start_dates`, off by default). `Teams::for($team)->members()->add($user, $role, startsAt: …)` (also `Team::addMember()` and `AddMemberData::$startsAt`) books a membership that begins later. Until then the member gets no access, role or permission: `active()`, `hasActiveMember()`, `isAccessibleBy()`, the `teams.context` middleware, `Teams::switchTo()`, the queued-job re-check, role and permission checks and the Gate all honour the start date. A booked membership holds its seat against `MaxSeats`. New `Member::hasStarted()`, `Member::isActive()`, the `unexpired()` and `upcoming()` scopes and `MemberFactory::startingAt()`. A start date given while the option is off, or one not before the expiry, throws `TeamsException`.
+- Upgrading: to use start dates, re-run `php artisan vendor:publish --tag=teams-migrations` (adds the nullable `team_members.starts_at` column), run `php artisan migrate`, then switch `teams.members.start_dates` on. With the option off, nothing reads or writes the column.
 
 ### Changed
 
@@ -25,6 +27,7 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 - `teams.context.recheck_queued_jobs` on by default.
 - `hasMember()`, `members()->has()`, `belongsToTeam()` and `isMemberOf()` ignore expired memberships, like `hasActiveMember()`.
+- `teams.members.start_dates` on by default. The `starts_at` migration is then required.
 
 ## 2.0.0 - 2026-11-07
 

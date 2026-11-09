@@ -47,7 +47,7 @@ trait HasTeams
 
     /**
      * Whether this model is a member of `$team` right now: a membership that has not
-     * expired.
+     * expired and — with `teams.members.start_dates` on — has started.
      */
     public function isActiveMemberOf(Team $team): bool
     {

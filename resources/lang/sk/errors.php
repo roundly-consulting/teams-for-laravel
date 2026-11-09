@@ -31,6 +31,8 @@ return [
     'context_switch_no_user' => 'Prepnutie tímu vyžaduje používateľa, voči ktorému sa overí členstvo.',
     'context_revoked' => 'Člen, ktorý nastavil kontext tímu, už nesmie konať v tíme #:team.',
     'context_actor_missing' => 'Člen, ktorý nastavil kontext tímu, už neexistuje.',
+    'start_dates_disabled' => 'Dátumy začiatku členstva sú vypnuté: zapnite teams.members.start_dates.',
+    'membership_window' => 'Členstvo musí začať pred uplynutím jeho platnosti.',
     'nesting_disabled' => 'Vnorené tímy sú vypnuté.',
     'nesting_cycle' => 'Tím #:team nemožno zaradiť pod seba ani pod žiadny z jeho podriadených tímov.',
     'nesting_too_deep' => '{1} Tím môže byť najviac :count úroveň pod svojím koreňovým tímom.|[2,4] Tím môže byť najviac :count úrovne pod svojím koreňovým tímom.|[0,*] Tím môže byť najviac :count úrovní pod svojím koreňovým tímom.',

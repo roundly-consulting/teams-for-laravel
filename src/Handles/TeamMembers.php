@@ -29,12 +29,20 @@ final readonly class TeamMembers
 
     /**
      * Add a member. Idempotent: re-adding an existing member returns the existing
-     * membership, with its role (and expiry, when given) updated.
+     * membership, with its role (and expiry or start, when given) updated.
+     *
+     * `$startsAt` books a membership that begins later — no access, role or permission
+     * until then. It needs `teams.members.start_dates`; without it a start date throws.
      *
      * @param  array<string, mixed>  $meta
      */
-    public function add(Model $member, string $role, array $meta = [], ?CarbonInterface $expiresAt = null): Member
-    {
+    public function add(
+        Model $member,
+        string $role,
+        array $meta = [],
+        ?CarbonInterface $expiresAt = null,
+        ?CarbonInterface $startsAt = null,
+    ): Member {
         return $this->manager->perform(
             TeamOperation::AddMember,
             AddMemberAction::class,
@@ -43,6 +51,7 @@ final readonly class TeamMembers
                 role: $role,
                 meta: $meta,
                 expiresAt: $expiresAt,
+                startsAt: $startsAt,
             )),
             ['team' => $this->team, 'member' => $member, 'role' => $role],
         );
@@ -99,7 +108,7 @@ final readonly class TeamMembers
 
     /**
      * Whether the model is a member of the team right now: a membership that has not
-     * expired.
+     * expired and — with `teams.members.start_dates` on — has started.
      */
     public function hasActive(Model $member): bool
     {

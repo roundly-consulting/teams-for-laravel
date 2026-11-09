@@ -16,6 +16,7 @@ it('has correct casts', function () {
     expect($member->getCasts())->toEqual([
         'id' => 'int',
         'meta' => 'collection',
+        'starts_at' => 'datetime',
         'expires_at' => 'datetime',
         'accepted_invite_id' => 'integer',
         'deleted_at' => 'datetime',

@@ -47,6 +47,17 @@ final class MemberFactory extends Factory
         ]);
     }
 
+    /**
+     * A membership that begins at `$startsAt` (needs the `starts_at` migration and
+     * `teams.members.start_dates`).
+     */
+    public function startingAt(CarbonInterface $startsAt): self
+    {
+        return $this->state(fn (): array => [
+            'starts_at' => $startsAt,
+        ]);
+    }
+
     public function expiringAt(CarbonInterface $expiresAt): self
     {
         return $this->state(fn (): array => [

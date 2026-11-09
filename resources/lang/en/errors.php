@@ -31,6 +31,8 @@ return [
     'context_switch_no_user' => 'Switching teams needs a user to check the membership against.',
     'context_revoked' => 'The member who set the team context may no longer act in team #:team.',
     'context_actor_missing' => 'The member who set the team context no longer exists.',
+    'start_dates_disabled' => 'Membership start dates are disabled: turn on teams.members.start_dates.',
+    'membership_window' => 'A membership must start before it expires.',
     'nesting_disabled' => 'Nested teams are disabled.',
     'nesting_cycle' => 'Team #:team cannot be placed under itself or one of its descendants.',
     'nesting_too_deep' => '{1} A team may sit at most :count level below its root team.|[0,*] A team may sit at most :count levels below its root team.',

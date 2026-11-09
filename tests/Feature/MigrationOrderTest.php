@@ -66,18 +66,18 @@ it('never auto-loads its migrations — the host publishes them', function (): v
 });
 
 it('publishes every migration timestamp-injected into the host', function (): void {
-    expect(TeamsServiceProvider::class)->toPublishMigrationsTimestamped('teams-migrations', 7);
+    expect(TeamsServiceProvider::class)->toPublishMigrationsTimestamped('teams-migrations', 8);
 });
 
 /**
  * R — the real-engine proof, and the whole point of this row. The deleted local version ran
  * the published files against a throwaway SQLite database — the one engine that cannot fail
- * this class of check — and openly said so. `migrations: 7` pins the count, and the
+ * this class of check — and openly said so. `migrations: 8` pins the count, and the
  * expectation additionally fails a set that "applies cleanly" while creating no tables (an
  * empty `up()` otherwise passes and proves nothing).
  */
 it('applies its migrations on postgres', function () use ($migrations): void {
-    expect($migrations)->toApplyOnConnection('pgsql', migrations: 7);
+    expect($migrations)->toApplyOnConnection('pgsql', migrations: 8);
 })->skip(fn (): bool => ! test()->connectionAvailable('pgsql'), 'no postgres connection available');
 
 /**

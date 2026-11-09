@@ -32,6 +32,7 @@ use RoundlyConsulting\Teams\TeamsManager;
  * @property string|null $role
  * @property int|null $accepted_invite_id
  * @property Collection<string, mixed> $meta
+ * @property CarbonInterface|null $starts_at
  * @property CarbonInterface|null $expires_at
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
@@ -59,6 +60,7 @@ class Member extends Model
     {
         return [
             'meta' => 'collection',
+            'starts_at' => 'datetime',
             'expires_at' => 'datetime',
             'accepted_invite_id' => 'integer',
         ];
@@ -89,11 +91,12 @@ class Member extends Model
 
     /**
      * Resolve the member's role, layering per-team overrides over the global
-     * provider. Expired memberships resolve to no role.
+     * provider. Expired memberships, and ones that have not started yet, resolve to
+     * no role.
      */
     public function role(): ?Role
     {
-        if ($this->role === null || $this->isExpired()) {
+        if ($this->role === null || ! $this->isActive()) {
             return null;
         }
 
@@ -115,14 +118,71 @@ class Member extends Model
     }
 
     /**
+     * Whether the membership has begun. Always true while `teams.members.start_dates` is
+     * off, and for a membership without a start date.
+     */
+    public function hasStarted(): bool
+    {
+        if (! TeamsConfig::memberStartDates()) {
+            return true;
+        }
+
+        return $this->starts_at === null || ! $this->starts_at->isFuture();
+    }
+
+    /**
+     * Whether the membership counts right now: started and not expired.
+     */
+    public function isActive(): bool
+    {
+        return $this->hasStarted() && ! $this->isExpired();
+    }
+
+    /**
+     * Memberships that count right now: not expired and — with
+     * `teams.members.start_dates` on — already started.
+     *
      * @param  Builder<Member>  $query
      * @return Builder<Member>
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where(function (Builder $query): void {
+        return $query->unexpired()
+            ->when(TeamsConfig::memberStartDates(), static function (Builder $query): void {
+                $query->where(static function (Builder $query): void {
+                    $query->whereNull('starts_at')->orWhere('starts_at', '<=', now());
+                });
+            });
+    }
+
+    /**
+     * Memberships that have not expired, started or not — every seat that is taken or
+     * booked.
+     *
+     * @param  Builder<Member>  $query
+     * @return Builder<Member>
+     */
+    public function scopeUnexpired(Builder $query): Builder
+    {
+        return $query->where(static function (Builder $query): void {
             $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
         });
+    }
+
+    /**
+     * Memberships booked to start later (`teams.members.start_dates`); none while the
+     * option is off.
+     *
+     * @param  Builder<Member>  $query
+     * @return Builder<Member>
+     */
+    public function scopeUpcoming(Builder $query): Builder
+    {
+        if (! TeamsConfig::memberStartDates()) {
+            return $query->whereKey([]);
+        }
+
+        return $query->unexpired()->where('starts_at', '>', now());
     }
 
     /**

@@ -119,11 +119,19 @@ return [
     | "expiring_within" is the default window (in days) for the
     | "teams:members:expiring" report and the MembershipExpiringSoon event.
     |
+    | "start_dates" lets a membership start in the future: pass "startsAt"
+    | to Teams::for($team)->members()->add(...) and the member has no access,
+    | role or permission until then. It needs the
+    | "add_starts_at_to_team_members" migration (re-run vendor:publish
+    | --tag=teams-migrations, then migrate). Off by default: nothing reads or
+    | writes the column, and a "startsAt" throws rather than being ignored.
+    |
     */
 
     'members' => [
         'prune_after' => env('TEAMS_MEMBERS_PRUNE_AFTER', '30 days'),
         'expiring_within' => env('TEAMS_MEMBERS_EXPIRING_WITHIN', 7),
+        'start_dates' => env('TEAMS_MEMBERS_START_DATES', false),
     ],
 
     /*

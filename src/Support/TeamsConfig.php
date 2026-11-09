@@ -185,6 +185,15 @@ final class TeamsConfig
     }
 
     /**
+     * Whether memberships honour `team_members.starts_at`. Off by default: nothing reads or
+     * writes the column until the host has published its migration and switched this on.
+     */
+    public static function memberStartDates(): bool
+    {
+        return Config::boolean('teams.members.start_dates');
+    }
+
+    /**
      * Whether a scoped query without a team context throws instead of returning no rows.
      */
     public static function throwWithoutContext(): bool

@@ -323,9 +323,10 @@ final class TeamsServiceProvider extends PackageServiceProvider
                 TeamsConfig::inviteCodeLength(),
             )),
             'Members' => self::orInvalid(static fn (): string => sprintf(
-                'prune %s after expiry, %d-day expiry warning',
+                'prune %s after expiry, %d-day expiry warning, start dates %s',
                 TeamsConfig::membersPruneAfter()->forHumans(),
                 TeamsConfig::membersExpiringWithin(),
+                TeamsConfig::memberStartDates() ? 'ON' : 'OFF',
             )),
             'Join requests' => self::orInvalid(static fn (): string => 'prune '.TeamsConfig::joinRequestsPruneAfter()->forHumans().' after resolution'),
             'Approvals' => $this->approvals(),

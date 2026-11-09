@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Teams\Actions;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
@@ -15,6 +16,7 @@ use RoundlyConsulting\Teams\Exceptions\TeamsException;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Options\MaxSeats;
+use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 final readonly class AddMemberAction
 {
@@ -29,6 +31,10 @@ final readonly class AddMemberAction
      *    membership (role, meta, expiry and accepted invite from this add);
      *  - anyone else gets a new row.
      *
+     * A start date (`teams.members.start_dates`) books a membership that begins later; it
+     * takes its seat from the moment it is booked. Without the option a start date throws
+     * rather than being ignored — ignored, the member would be active at once.
+     *
      * Runs in one transaction that first locks the team row, so concurrent adds to
      * a team serialise and the seat cap holds. Every membership read is a locking
      * read; a duplicate insert that still slips through is resolved to the row
@@ -36,6 +42,8 @@ final readonly class AddMemberAction
      */
     public function execute(Team $team, AddMemberData $data): Member
     {
+        $this->guardStartDate($data);
+
         return $team->getConnection()->transaction(function () use ($team, $data): Member {
             $team->newQueryWithoutScopes()->whereKey($team->getKey())->lockForUpdate()->first();
 
@@ -73,10 +81,22 @@ final readonly class AddMemberAction
 
     private function update(Member $existing, AddMemberData $data): Member
     {
+        // The window is checked against the expiry the membership will have, which an
+        // idempotent re-add without one keeps.
+        $expiresAt = $data->expiresAt ?? $existing->expires_at;
+
+        if ($data->startsAt !== null && $expiresAt !== null && $data->startsAt->greaterThanOrEqualTo($expiresAt)) {
+            throw TeamsException::invalidMembershipWindow();
+        }
+
         // Only overwrite the expiry when one is explicitly supplied, so an
         // idempotent re-add does not silently clear an existing expiry.
         if ($data->expiresAt !== null) {
             $existing->update(['expires_at' => $data->expiresAt]);
+        }
+
+        if ($data->startsAt !== null) {
+            $existing->update(['starts_at' => $data->startsAt]);
         }
 
         // Preserve the originally accepted invite: only stamp it when the
@@ -106,6 +126,7 @@ final readonly class AddMemberAction
             'meta' => new Collection($data->meta),
             'expires_at' => $data->expiresAt,
             'accepted_invite_id' => $data->acceptedInviteId,
+            ...$this->startColumn($data),
         ]);
 
         if ($existing->trashed()) {
@@ -129,9 +150,41 @@ final readonly class AddMemberAction
             'meta' => new Collection($data->meta),
             'expires_at' => $data->expiresAt,
             'accepted_invite_id' => $data->acceptedInviteId,
+            ...$this->startColumn($data),
         ]);
 
         return $created;
+    }
+
+    /**
+     * A start date is honoured only with `teams.members.start_dates` on, and must come
+     * before the expiry — a membership that ends before it begins is never active.
+     */
+    private function guardStartDate(AddMemberData $data): void
+    {
+        if ($data->startsAt === null) {
+            return;
+        }
+
+        if (! TeamsConfig::memberStartDates()) {
+            throw TeamsException::startDatesDisabled();
+        }
+
+        if ($data->expiresAt !== null && $data->startsAt->greaterThanOrEqualTo($data->expiresAt)) {
+            throw TeamsException::invalidMembershipWindow();
+        }
+    }
+
+    /**
+     * The `starts_at` column — written only with `teams.members.start_dates` on, so a host
+     * that has not published that migration never touches it. A revived membership
+     * without a start date starts at once.
+     *
+     * @return array<string, CarbonInterface|null>
+     */
+    private function startColumn(AddMemberData $data): array
+    {
+        return TeamsConfig::memberStartDates() ? ['starts_at' => $data->startsAt] : [];
     }
 
     private function find(Team $team, Model $member): ?Member
@@ -162,8 +215,9 @@ final readonly class AddMemberAction
             return;
         }
 
-        // Ids, not COUNT(*): PostgreSQL refuses FOR UPDATE on an aggregate.
-        $taken = count($team->members()->active()->lockForUpdate()->pluck('id')->all());
+        // Ids, not COUNT(*): PostgreSQL refuses FOR UPDATE on an aggregate. Unexpired, not
+        // active: a membership booked to start later already holds its seat.
+        $taken = count($team->members()->unexpired()->lockForUpdate()->pluck('id')->all());
 
         if ($taken >= $maxSeats) {
             throw TeamsException::maxSeatsReached($maxSeats);

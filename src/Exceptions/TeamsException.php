@@ -29,6 +29,23 @@ class TeamsException extends RuntimeException
     }
 
     /**
+     * A membership start date while `teams.members.start_dates` is off: honouring it is
+     * impossible, and ignoring it would make the member active at once.
+     */
+    public static function startDatesDisabled(): self
+    {
+        return new self((string) trans('teams::errors.start_dates_disabled'));
+    }
+
+    /**
+     * A membership whose start is not before its expiry would never be active.
+     */
+    public static function invalidMembershipWindow(): self
+    {
+        return new self((string) trans('teams::errors.membership_window'));
+    }
+
+    /**
      * A `Team::scopedKey()` suffix with a `.` or `..` segment (or a NUL byte) — it could
      * climb out of the team's own prefix.
      */

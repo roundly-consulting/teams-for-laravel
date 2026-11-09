@@ -26,7 +26,7 @@ it('never auto-loads its migrations', function (): void {
 it('publishes every migration timestamp-injected under the teams-migrations tag', function (): void {
     $paths = ServiceProvider::pathsToPublish(TeamsServiceProvider::class, 'teams-migrations');
 
-    expect($paths)->toHaveCount(7);
+    expect($paths)->toHaveCount(8);
 
     $destinations = array_values(array_map(
         static fn (string $target): string => basename($target),
@@ -54,6 +54,7 @@ it('publishes every migration timestamp-injected under the teams-migrations tag'
         '0005_create_team_join_requests_table.php',
         '0006_create_team_role_overrides_table.php',
         '0007_add_parent_id_to_teams_table.php',
+        '0008_add_starts_at_to_team_members_table.php',
     ]);
 });
 

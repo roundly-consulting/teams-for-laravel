@@ -284,4 +284,29 @@ return [
         'inherit_roles_down' => env('TEAMS_INHERIT_ROLES_DOWN', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | permissions-for-laravel bridge
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. When on, roles and permissions granted to a member with
+    | permissions-for-laravel inside a team (Permissions::for($user)->in($team),
+    | or Teams::for($team)->members()->grant($user)) count in the team's own
+    | checks: memberHasPermission(), memberHasRole(), the teams.<permission>
+    | Gate abilities and the Blade directives. They count only while the
+    | membership is active. Scope-less Gate checks use the current team, a
+    | removed or pruned member loses the team's grants and a force-deleted team
+    | forgets every grant made in it.
+    |
+    | It needs roundly-consulting/permissions-for-laravel ^2.1 with
+    | "permissions.assignments.enabled" on (and its migrations published and
+    | run). If either is missing the application fails at boot rather than
+    | ignoring the switch.
+    |
+    */
+
+    'permissions' => [
+        'bridge' => env('TEAMS_PERMISSIONS_BRIDGE', false),
+    ],
+
 ];

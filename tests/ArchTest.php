@@ -119,3 +119,13 @@ ArchPresets::modelsGoThroughTheFacade('RoundlyConsulting\Teams');
  * covers the full leftover set.
  */
 ArchPresets::noDebuggingLeftovers();
+
+/**
+ * permissions-for-laravel is a `suggest`, not a `require`: a host without it must be able to
+ * load every teams class. So only the bridge — wired solely when `teams.permissions.bridge`
+ * is on, which fails the boot without the package — may name one of its classes.
+ */
+arch('only the permissions bridge references permissions-for-laravel')
+    ->expect('RoundlyConsulting\Teams')
+    ->not->toUse('RoundlyConsulting\Permissions')
+    ->ignoring('RoundlyConsulting\Teams\Bridges\Permissions');

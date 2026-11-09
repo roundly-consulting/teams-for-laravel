@@ -43,7 +43,14 @@
         "phpstan/extension-installer": "^1.3",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
+        "roundly-consulting/permissions-for-laravel": "^2.1",
         "roundly-consulting/testing-for-laravel": "^2.0"
+    },
+    "suggest": {
+        "roundly-consulting/permissions-for-laravel": "Scoped, time-boxed roles and permissions per team member (turn on teams.permissions.bridge)."
+    },
+    "conflict": {
+        "roundly-consulting/permissions-for-laravel": "<2.1"
     },
     "autoload": {
         "psr-4": {

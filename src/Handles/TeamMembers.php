@@ -10,9 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 use RoundlyConsulting\Teams\Actions\AddMemberAction;
 use RoundlyConsulting\Teams\Actions\ChangeMemberRoleAction;
 use RoundlyConsulting\Teams\Actions\RemoveMemberAction;
+use RoundlyConsulting\Teams\Bridges\Permissions\MemberGrants;
+use RoundlyConsulting\Teams\Bridges\Permissions\PermissionsBridge;
 use RoundlyConsulting\Teams\DataTransferObjects\AddMemberData;
 use RoundlyConsulting\Teams\Enums\TeamOperation;
 use RoundlyConsulting\Teams\Exceptions\MemberNotFoundException;
+use RoundlyConsulting\Teams\Exceptions\TeamsException;
 use RoundlyConsulting\Teams\Models\Member;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\TeamsManager;
@@ -83,6 +86,23 @@ final readonly class TeamMembers
             fn (ChangeMemberRoleAction $action): Member => $action->execute($this->team, $member, $role),
             ['team' => $this->team, 'member' => $member, 'role' => $role],
         );
+    }
+
+    /**
+     * The member's permissions-for-laravel roles and permissions inside this team —
+     * `grant($user)->until($friday)->assignRole('reviewer')`. Needs `teams.permissions.bridge`;
+     * an addition needs a current or booked membership and, unless `until()` says otherwise,
+     * ends when the membership expires.
+     *
+     * @throws TeamsException when the permissions bridge is off
+     */
+    public function grant(Model $member): MemberGrants
+    {
+        if (! PermissionsBridge::enabled()) {
+            throw TeamsException::permissionsBridgeOff();
+        }
+
+        return new MemberGrants($this->manager, $this->team, $member);
     }
 
     /**

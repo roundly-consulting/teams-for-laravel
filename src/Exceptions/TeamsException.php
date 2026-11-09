@@ -46,6 +46,15 @@ class TeamsException extends RuntimeException
     }
 
     /**
+     * `Teams::for($team)->members()->grant($user)` while `teams.permissions.bridge` is off:
+     * the grant would land in permissions-for-laravel but no team check would ever read it.
+     */
+    public static function permissionsBridgeOff(): self
+    {
+        return new self((string) trans('teams::errors.permissions_bridge_off'));
+    }
+
+    /**
      * A `Team::scopedKey()` suffix with a `.` or `..` segment (or a NUL byte) — it could
      * climb out of the team's own prefix.
      */

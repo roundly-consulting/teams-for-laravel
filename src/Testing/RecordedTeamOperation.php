@@ -12,7 +12,7 @@ use RoundlyConsulting\Teams\Enums\TeamOperation;
  * it returned.
  *
  * Context keys: `team`; `name`, `owner` (create, transfer); `member`, `role`
- * (members); `invite`, `email` (invites); `requester`, `request`, `by` (join
+ * (members); `verb`, `names` (member grants); `invite`, `email` (invites); `requester`, `request`, `by` (join
  * requests); `key` (role definitions); `days` (expiry notifications).
  */
 final readonly class RecordedTeamOperation
@@ -52,5 +52,17 @@ final readonly class RecordedTeamOperation
         $value = $this->context[$key] ?? null;
 
         return is_string($value) ? $value : null;
+    }
+
+    /**
+     * The strings recorded under the context key — a list, such as a grant's names.
+     *
+     * @return list<string>
+     */
+    public function strings(string $key): array
+    {
+        $value = $this->context[$key] ?? [];
+
+        return is_array($value) ? array_values(array_filter($value, is_string(...))) : [];
     }
 }

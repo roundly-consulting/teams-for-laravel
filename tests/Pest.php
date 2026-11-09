@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use RoundlyConsulting\Teams\Tests\GateDisabledTestCase;
+use RoundlyConsulting\Teams\Tests\PermissionsBridge\PermissionsBridgeTestCase;
+use RoundlyConsulting\Teams\Tests\PermissionsBridgeOff\PermissionsBridgeOffTestCase;
 use RoundlyConsulting\Teams\Tests\SwappedModelsTestCase;
 use RoundlyConsulting\Teams\Tests\TestCase;
 
@@ -36,3 +38,9 @@ uses(GateDisabledTestCase::class)->in(__DIR__.'/GateDisabled');
 // providers boot, so they run on their own base case in their own directory — Pest binds a
 // test case per directory, not per file.
 uses(SwappedModelsTestCase::class)->in(__DIR__.'/SwappedModels');
+
+// permissions-for-laravel is a `suggest`: the bridge suites boot it — with the bridge on, and
+// installed but off — on their own base cases. TEAMS_TEST_PERMISSIONS_BRIDGE=on runs the whole
+// suite above with the bridge on as well (its own CI job).
+uses(PermissionsBridgeTestCase::class)->in(__DIR__.'/PermissionsBridge');
+uses(PermissionsBridgeOffTestCase::class)->in(__DIR__.'/PermissionsBridgeOff');

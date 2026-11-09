@@ -12,10 +12,13 @@ use RoundlyConsulting\Connections\ConnectionsServiceProvider;
 use RoundlyConsulting\Contacts\ContactsServiceProvider;
 use RoundlyConsulting\Options\Facades\Options;
 use RoundlyConsulting\Options\OptionsServiceProvider;
+use RoundlyConsulting\Permissions\PermissionsServiceProvider;
+use RoundlyConsulting\Sluggable\SluggableServiceProvider;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\TeamsServiceProvider;
 use RoundlyConsulting\Teams\Testing\Concerns\InteractsWithTeams;
 use RoundlyConsulting\Testing\PackageTestCase;
+use RoundlyConsulting\Translatable\TranslatableServiceProvider;
 
 abstract class TestCase extends PackageTestCase
 {
@@ -56,6 +59,11 @@ abstract class TestCase extends PackageTestCase
             AddressesServiceProvider::class,
             ApprovalsServiceProvider::class,
             ConnectionsServiceProvider::class,
+            ...($this->loadsPermissions() ? [
+                SluggableServiceProvider::class,
+                TranslatableServiceProvider::class,
+                PermissionsServiceProvider::class,
+            ] : []),
             TeamsServiceProvider::class,
         ];
     }
@@ -83,6 +91,7 @@ abstract class TestCase extends PackageTestCase
             AddressesServiceProvider::class,
             ConnectionsServiceProvider::class,
             ApprovalsServiceProvider::class,
+            ...($this->loadsPermissions() ? [PermissionsServiceProvider::class] : []),
             TeamsServiceProvider::class,
             __DIR__.'/database/migrations',
         ];
@@ -117,6 +126,34 @@ abstract class TestCase extends PackageTestCase
             // Keep the provider caches out of the way so each test reads fresh state.
             'options.cache.enabled' => false,
             'connections.cache.enabled' => false,
+            ...($this->loadsPermissions() ? [
+                'permissions.assignments.enabled' => true,
+                'teams.permissions.bridge' => $this->permissionsBridge(),
+            ] : []),
         ];
+    }
+
+    /**
+     * Whether permissions-for-laravel (a `require-dev` + `suggest`) is booted, as a host that
+     * installed it would boot it. Off for the plain suite; the bridge suites opt in, and
+     * `TEAMS_TEST_PERMISSIONS_BRIDGE=on` runs the WHOLE suite with the bridge on (its own CI
+     * job) — proof that the bridge changes nothing for anyone without a permissions grant.
+     */
+    protected function loadsPermissions(): bool
+    {
+        return self::bridgeFromEnvironment();
+    }
+
+    /**
+     * Whether `teams.permissions.bridge` is on; only read while permissions is loaded.
+     */
+    protected function permissionsBridge(): bool
+    {
+        return self::bridgeFromEnvironment();
+    }
+
+    private static function bridgeFromEnvironment(): bool
+    {
+        return in_array(strtolower((string) getenv('TEAMS_TEST_PERMISSIONS_BRIDGE')), ['1', 'on', 'true', 'yes'], true);
     }
 }

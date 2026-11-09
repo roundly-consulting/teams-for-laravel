@@ -37,4 +37,7 @@ return [
     'nesting_cycle' => 'Tím #:team nemožno zaradiť pod seba ani pod žiadny z jeho podriadených tímov.',
     'nesting_too_deep' => '{1} Tím môže byť najviac :count úroveň pod svojím koreňovým tímom.|[2,4] Tím môže byť najviac :count úrovne pod svojím koreňovým tímom.|[0,*] Tím môže byť najviac :count úrovní pod svojím koreňovým tímom.',
     'unsafe_scoped_key' => 'Kľúč tímu „:suffix“ nesmie obsahovať segmenty „.“ ani „..“.',
+    'permissions_bridge_not_installed' => 'Prepojenie teams.permissions.bridge je zapnuté, ale balík roundly-consulting/permissions-for-laravel ^2.1 nie je nainštalovaný.',
+    'permissions_bridge_assignments_off' => 'Prepojenie teams.permissions.bridge vyžaduje priradenia v rozsahu: zapnite permissions.assignments.enabled a spustite migrácie balíka permissions.',
+    'permissions_bridge_off' => 'Oprávnenia člena vyžadujú prepojenie s balíkom permissions: zapnite teams.permissions.bridge.',
 ];

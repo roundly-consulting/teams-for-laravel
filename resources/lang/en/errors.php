@@ -37,4 +37,7 @@ return [
     'nesting_cycle' => 'Team #:team cannot be placed under itself or one of its descendants.',
     'nesting_too_deep' => '{1} A team may sit at most :count level below its root team.|[0,*] A team may sit at most :count levels below its root team.',
     'unsafe_scoped_key' => 'The scoped key ":suffix" may not contain "." or ".." segments.',
+    'permissions_bridge_not_installed' => 'teams.permissions.bridge is on, but roundly-consulting/permissions-for-laravel ^2.1 is not installed.',
+    'permissions_bridge_assignments_off' => 'teams.permissions.bridge needs scoped assignments: turn on permissions.assignments.enabled and run the permissions migrations.',
+    'permissions_bridge_off' => 'Member grants need the permissions bridge: turn on teams.permissions.bridge.',
 ];

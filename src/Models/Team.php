@@ -17,6 +17,7 @@ use RoundlyConsulting\Connections\Concerns\HasConnections;
 use RoundlyConsulting\Connections\Contracts\Connectable;
 use RoundlyConsulting\Contacts\Concerns\HasContacts;
 use RoundlyConsulting\Options\Traits\HasOptions;
+use RoundlyConsulting\Teams\Bridges\Permissions\PermissionsBridge;
 use RoundlyConsulting\Teams\Database\Factories\TeamFactory;
 use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Exceptions\TeamsException;
@@ -179,8 +180,17 @@ class Team extends Model implements Connectable
     /**
      * Whether the model holds `$role` on this team right now. An expired membership
      * holds no role (its row stays for audit until pruned).
+     *
+     * With `teams.permissions.bridge` on, a permissions-for-laravel role given to the member
+     * in this team (or a governing team) counts too, while that membership is active.
      */
     public function memberHasRole(Model $member, string $role): bool
+    {
+        return $this->membershipHasRole($member, $role)
+            || (PermissionsBridge::enabled() && PermissionsBridge::memberHasRole($this, $member, $role));
+    }
+
+    private function membershipHasRole(Model $member, string $role): bool
     {
         if (TeamsConfig::inheritRolesDown()) {
             return MemberModel::query()
@@ -202,8 +212,17 @@ class Team extends Model implements Connectable
      * Whether the model's role on this team grants `$permission`. With
      * `teams.nesting.inherit_roles_down` on, a role held on any team above this one
      * counts too, resolved against that team's own role set.
+     *
+     * With `teams.permissions.bridge` on, a permissions-for-laravel grant made to the member
+     * in this team (or a governing team) counts too, while that membership is active.
      */
     public function memberHasPermission(Model $member, string $permission): bool
+    {
+        return $this->membershipHasPermission($member, $permission)
+            || (PermissionsBridge::enabled() && PermissionsBridge::memberHasPermission($this, $member, $permission));
+    }
+
+    private function membershipHasPermission(Model $member, string $permission): bool
     {
         if (TeamsConfig::inheritRolesDown()) {
             /** @var Collection<int, Member> $memberships */

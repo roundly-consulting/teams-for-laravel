@@ -27,6 +27,7 @@ use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Teams\Actions\RecheckTeamContextAction;
+use RoundlyConsulting\Teams\Bridges\Permissions\PermissionsBridge;
 use RoundlyConsulting\Teams\Commands\DoctorCommand;
 use RoundlyConsulting\Teams\Commands\ListPermissionsCommand;
 use RoundlyConsulting\Teams\Commands\ListRolesCommand;
@@ -150,6 +151,12 @@ final class TeamsServiceProvider extends PackageServiceProvider
         $this->announceRestoredContext();
 
         Event::listen(ApprovalRequestResolved::class, SyncJoinRequestStatusFromApproval::class);
+
+        // Optional: wired only when switched on, and then it fails the boot when
+        // permissions-for-laravel (or its scoped assignments) is missing.
+        if (TeamsConfig::permissionsBridge()) {
+            PermissionsBridge::boot();
+        }
     }
 
     /**
@@ -342,6 +349,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
                 ? 'throw without a context'
                 : 'no rows without a context'),
             'Nested teams' => $this->nesting(),
+            'Permissions bridge' => self::orInvalid(static fn (): string => TeamsConfig::permissionsBridge() ? 'ON' : 'OFF'),
         ];
     }
 

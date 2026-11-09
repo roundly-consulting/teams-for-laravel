@@ -145,6 +145,7 @@ it('reports the package in about without leaking the host vocabulary', function 
             'SET',
             '3 roles',
             '1 permission',
+            'Permissions bridge',
         ],
     );
 });

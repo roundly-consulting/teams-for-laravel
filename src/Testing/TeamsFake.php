@@ -312,6 +312,44 @@ final class TeamsFake extends TeamsManager
         $this->assertNone([TeamOperation::MoveTeam], 'Expected no team to be moved, but %d were.');
     }
 
+    // Member grants (permissions bridge) --------------------------------------------
+
+    /**
+     * Roles or permissions were granted to `$member` in `$team` through
+     * `Teams::for($team)->members()->grant($member)` — including `$name` when given.
+     */
+    public function assertMemberGranted(Team $team, Model $member, ?string $name = null): void
+    {
+        $this->assertRecorded(
+            TeamOperation::GrantMemberAuthorization,
+            $this->grantOperation($team, $member, $name),
+            'Expected the member to be granted '.($name === null ? 'roles or permissions' : "[{$name}]").' in the team, but it was not.',
+        );
+    }
+
+    public function assertNothingGranted(): void
+    {
+        $this->assertNone([TeamOperation::GrantMemberAuthorization], 'Expected no member grants, but %d were recorded.');
+    }
+
+    /**
+     * Roles or permissions of `$member` in `$team` were removed through
+     * `Teams::for($team)->members()->grant($member)` — including `$name` when given.
+     */
+    public function assertMemberGrantRevoked(Team $team, Model $member, ?string $name = null): void
+    {
+        $this->assertRecorded(
+            TeamOperation::RevokeMemberAuthorization,
+            $this->grantOperation($team, $member, $name),
+            'Expected the member\'s '.($name === null ? 'roles or permissions' : "[{$name}]").' in the team to be removed, but they were not.',
+        );
+    }
+
+    public function assertNoGrantRevoked(): void
+    {
+        $this->assertNone([TeamOperation::RevokeMemberAuthorization], 'Expected no member grants to be removed, but %d were recorded.');
+    }
+
     // Housekeeping -----------------------------------------------------------------
 
     public function assertInvitesPruned(): void
@@ -348,6 +386,16 @@ final class TeamsFake extends TeamsManager
         return static fn (RecordedTeamOperation $op): bool => $op->involves('team', $team)
             && $op->involves('member', $member)
             && ($role === null || $op->string('role') === $role);
+    }
+
+    /**
+     * @return Closure(RecordedTeamOperation): bool
+     */
+    private function grantOperation(Team $team, Model $member, ?string $name): Closure
+    {
+        return static fn (RecordedTeamOperation $op): bool => $op->involves('team', $team)
+            && $op->involves('member', $member)
+            && ($name === null || in_array($name, $op->strings('names'), true));
     }
 
     /**

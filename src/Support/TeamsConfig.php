@@ -245,6 +245,14 @@ final class TeamsConfig
     }
 
     /**
+     * Whether the permissions-for-laravel bridge is switched on. Off by default.
+     */
+    public static function permissionsBridge(): bool
+    {
+        return Config::boolean('teams.permissions.bridge');
+    }
+
+    /**
      * Whether `$key` is not set: absent, null or blank (`''` or whitespace, a host's `KEY=`).
      * Every reader here treats such a key exactly like an absent one.
      */

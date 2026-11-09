@@ -61,6 +61,10 @@ use RoundlyConsulting\Teams\Testing\TeamsFake;
  * @method static void assertNothingPruned()
  * @method static void assertTeamMoved(\RoundlyConsulting\Teams\Models\Team $team, ?\RoundlyConsulting\Teams\Models\Team $under = null)
  * @method static void assertNothingMoved()
+ * @method static void assertMemberGranted(\RoundlyConsulting\Teams\Models\Team $team, \Illuminate\Database\Eloquent\Model $member, ?string $name = null)
+ * @method static void assertNothingGranted()
+ * @method static void assertMemberGrantRevoked(\RoundlyConsulting\Teams\Models\Team $team, \Illuminate\Database\Eloquent\Model $member, ?string $name = null)
+ * @method static void assertNoGrantRevoked()
  *
  * The `assert*` / `recorded` methods exist only on the fake — call `Teams::fake()` first.
  *

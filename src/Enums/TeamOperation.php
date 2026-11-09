@@ -70,4 +70,10 @@ enum TeamOperation: string
 
     /** A team was placed under a new parent team, or detached to a root. */
     case MoveTeam = 'move-team';
+
+    /** A member was granted roles or permissions in a team through the permissions bridge. */
+    case GrantMemberAuthorization = 'grant-member-authorization';
+
+    /** A member's roles or permissions in a team were removed through the permissions bridge. */
+    case RevokeMemberAuthorization = 'revoke-member-authorization';
 }

@@ -4,6 +4,21 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- Optional bridge to `roundly-consulting/permissions-for-laravel` ^2.1 (`teams.permissions.bridge`, off by default; the package is a `suggest`, never a `require`). With it on, roles and permissions granted to a member inside a team (`Permissions::for($user)->in($team)`) count in `Team::memberHasPermission()` / `memberHasRole()`, `HasTeams::hasTeamPermission()` / `hasTeamRole()`, the `teams.<permission>` Gate abilities and the `@teamPermission` / `@teamRole` directives — alongside the membership role, and only while the membership is active (expiry and start dates are read at check time). With roles inheriting down, a grant held in a team above counts for its members too.
+- With the bridge on, scope-less Gate checks (`can:` middleware, `@can('x')`, `$user->can('x')`) resolve in the current team for its active members, through `Permissions::resolveScopeUsing()`. Multi-team mode and non-members get no team scope. A host resolver registered later replaces it.
+- With the bridge on, a member's grants in a team are forgotten when the member is removed, when an expired membership is pruned and when a lapsed membership is re-added (it starts afresh, as before); a force-deleted team forgets every grant made in it (`Permissions::forgetScope()`). A soft-deleted team keeps them.
+- `Teams::for($team)->members()->grant($user)` — the member's grants in the team: `->assignRole()`, `->givePermissionTo()`, `->syncRoles()`, `->syncPermissions()`, `->removeRole()`, `->revokePermissionTo()`, `->forgetAllAuthorization()`, the windows `->from()`, `->until()`, `->between()`, and the reads `->hasRole()`, `->hasPermissionTo()`, `->assignments()`. An addition needs a current or booked membership (`MemberNotFoundException` otherwise) and ends when the membership expires unless `until()` says otherwise. Actions `GrantMemberAuthorizationAction` / `RevokeMemberAuthorizationAction`, operations `TeamOperation::GrantMemberAuthorization` / `RevokeMemberAuthorization`, and `TeamsFake::assertMemberGranted()`, `assertNothingGranted()`, `assertMemberGrantRevoked()`, `assertNoGrantRevoked()`.
+- `php artisan about` shows the bridge (`Permissions bridge ON|OFF`).
+- Turning it on: `composer require roundly-consulting/permissions-for-laravel`, publish and run its migrations, set `PERMISSIONS_ASSIGNMENTS=true`, then `TEAMS_PERMISSIONS_BRIDGE=true`. With the switch on but the package missing or its assignments off, the application fails at boot with an `InvalidConfigurationException` rather than ignoring the switch.
+
+### Changed
+
+- `composer.json` declares `conflict: roundly-consulting/permissions-for-laravel <2.1`: an app that has both packages needs permissions 2.1 or later (any 2.x app updates with `composer update roundly-consulting/permissions-for-laravel`). Apps without permissions are unaffected.
+
 ## 2.1.0 - 2026-11-09
 
 ### Added

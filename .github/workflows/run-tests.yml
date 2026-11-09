@@ -43,6 +43,33 @@ jobs:
       - name: Execute tests
         run: vendor/bin/pest --coverage --min=90 --ci
 
+  test-permissions-bridge:
+    runs-on: ubuntu-latest
+    name: P8.4 - permissions bridge on
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, intl, fileinfo
+          coverage: none
+
+      # permissions-for-laravel is a require-dev (and a suggest), so it installs from Packagist here.
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction
+
+      # The whole suite again with permissions-for-laravel booted and teams.permissions.bridge
+      # on: the bridge must change nothing for members without a permissions grant. The
+      # bridge's own tests run in every job; this one proves the rest of the package with it on.
+      - name: Execute tests with the bridge on
+        env:
+          TEAMS_TEST_PERMISSIONS_BRIDGE: 'on'
+        run: vendor/bin/pest --ci --parallel
+
   test-pgsql:
     runs-on: ubuntu-latest
     name: P8.4 - pgsql real-engine

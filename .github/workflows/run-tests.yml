@@ -129,3 +129,54 @@ jobs:
         # Coverage is enforced on the sqlite matrix; this is a correctness leg, and
         # re-measuring it doubles the slowest job for no signal.
         run: vendor/bin/pest --ci
+
+  test-pgsql-ulid:
+    runs-on: ubuntu-latest
+    name: P8.4 - pgsql real-engine, ULID teams
+
+    steps:
+      - name: Start postgres
+        run: >-
+          docker run -d --name postgres --tmpfs /var/lib/postgresql/data
+          -e POSTGRES_DB=testing -e POSTGRES_USER=testing -e POSTGRES_PASSWORD=secret
+          -p 5432:5432 postgres:16
+          -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, pgsql, pdo_pgsql, bcmath, intl, fileinfo
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction
+
+      - name: Wait for postgres
+        run: |
+          for _ in $(seq 1 90); do
+            docker exec postgres psql -h 127.0.0.1 -U testing -d testing -c 'select 1' >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          docker logs postgres
+          exit 1
+
+      # The whole suite again with teams keyed by ULID (teams.primary_key_type = ulid, and
+      # the sibling packages' key types pointing at teams): members, invites, join requests,
+      # per-team roles, nesting, scoping and the permissions bridge on character(26) team
+      # keys. SQLite's type affinity would accept an integer in a ULID column; Postgres does
+      # not, so this leg runs on the real engine. One test skips (a team-to-user
+      # connection: the fixture users stay bigint).
+      - name: Execute tests with ULID teams against postgres
+        env:
+          TEAMS_TEST_TEAM_KEY: ulid
+          TESTING_DB_DRIVER: pgsql
+          TESTING_DB_HOST: 127.0.0.1
+          TESTING_DB_PORT: 5432
+          TESTING_DB_DATABASE: testing
+          TESTING_DB_USERNAME: testing
+          TESTING_DB_PASSWORD: secret
+        run: vendor/bin/pest --ci --parallel

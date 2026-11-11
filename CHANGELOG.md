@@ -6,19 +6,22 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+## 2.3.0 - 2026-11-11
+
 ### Added
 
 - `teams.primary_key_type` (`TEAMS_PRIMARY_KEY_TYPE`: `bigint`, `uuid` or `ulid`; default `bigint`) keys the teams themselves. It types `teams.id` and every column pointing at a team — `team_id` on `team_invites`, `team_members`, `team_join_requests` and `team_role_overrides`, `teams.parent_id`, and the `$table->teamScope()` column — and the packaged `Team` model mints its own time-ordered UUID (v7) or lowercase ULID. Set it before migrating; a typo throws `InvalidConfigurationException`. Teams can now be ULID-keyed without a model subclass or hand-edited migrations.
 - `php artisan teams:doctor` checks the team key: it fails when the configured team model keys differently from `teams.primary_key_type` (for example a `HasUlids` subclass with the setting left at `bigint`) or a migrated team column cannot hold the key (an integer `team_id` for ULID teams). Programmatic: `Teams::teamKeys()` returns a `TeamKeyReport` (`InspectTeamKeysAction`).
 
+### Changed
+
+- A `teams.models.team` subclass that uses `HasUlids`/`HasUuids` itself keeps working, and `teamScope()` keeps following its key. Set `teams.primary_key_type` to match it; the doctor reports the mismatch until you do. Bigint hosts change nothing: the migrations emit exactly the same schema.
+- Maintenance: CI also runs the suite with ULID-keyed teams on PostgreSQL.
+
 ### Fixed
 
 - Per-team role overrides (`Teams::for($team)->roles()->define()`) work for UUID/ULID teams. `DefineTeamRoleData::$teamId` is `int|string`; the team key was cast to `int`, which turned a ULID into `0`.
 - `@property` types of `Team::$id` / `$parent_id` and the `team_id` of `Member`, `Invite`, `JoinRequest` and `TeamRole` are `int|string`.
-
-### Changed
-
-- A `teams.models.team` subclass that uses `HasUlids`/`HasUuids` itself keeps working, and `teamScope()` keeps following its key. Set `teams.primary_key_type` to match it; the doctor reports the mismatch until you do. Bigint hosts change nothing: the migrations emit exactly the same schema.
 
 ## 2.2.0 - 2026-11-09
 

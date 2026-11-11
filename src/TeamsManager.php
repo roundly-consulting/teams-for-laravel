@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use RoundlyConsulting\Teams\Actions\CreateTeamAction;
+use RoundlyConsulting\Teams\Actions\InspectTeamKeysAction;
 use RoundlyConsulting\Teams\Actions\InspectTeamScopesAction;
 use RoundlyConsulting\Teams\Actions\RunAsTeamAction;
 use RoundlyConsulting\Teams\Actions\SetCurrentTeamAction;
@@ -17,6 +18,7 @@ use RoundlyConsulting\Teams\Actions\SetCurrentTeamsAction;
 use RoundlyConsulting\Teams\Actions\SwitchTeamAction;
 use RoundlyConsulting\Teams\DataTransferObjects\CreateTeamData;
 use RoundlyConsulting\Teams\DataTransferObjects\ScopedModelReport;
+use RoundlyConsulting\Teams\DataTransferObjects\TeamKeyReport;
 use RoundlyConsulting\Teams\Enums\TeamOperation;
 use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Handles\Invites;
@@ -201,6 +203,15 @@ class TeamsManager
     public function scopedModels(): array
     {
         return $this->container->make(InspectTeamScopesAction::class)->execute();
+    }
+
+    /**
+     * The doctor's key check: `teams.primary_key_type`, the key the team model writes and
+     * the type of every column holding a team key (`php artisan teams:doctor`).
+     */
+    public function teamKeys(): TeamKeyReport
+    {
+        return $this->container->make(InspectTeamKeysAction::class)->execute();
     }
 
     /**

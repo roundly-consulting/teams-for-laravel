@@ -26,7 +26,7 @@ use RoundlyConsulting\Teams\TeamsManager;
 
 /**
  * @property int $id
- * @property int $team_id
+ * @property int|string $team_id
  * @property string $member_type
  * @property int $member_id
  * @property string|null $role

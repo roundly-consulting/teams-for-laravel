@@ -16,7 +16,7 @@ use RoundlyConsulting\Teams\Support\TeamModel;
 
 /**
  * @property int $id
- * @property int $team_id
+ * @property int|string $team_id
  * @property string $key
  * @property string $name
  * @property Collection<int, string> $permissions

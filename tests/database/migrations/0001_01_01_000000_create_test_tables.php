@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use RoundlyConsulting\Teams\Support\TeamsSchema;
 
 return new class extends Migration
 {
@@ -16,7 +17,7 @@ return new class extends Migration
             // Deliberately unconstrained: this is a host's users table, and the column
             // exists so the "current team" reader trait has something to read. A real host
             // would not necessarily constrain it either.
-            $table->foreignId('team_id')->nullable();
+            TeamsSchema::teamForeignKey($table, 'team_id')->nullable();
 
             // For the accept-invite stub's verified-email check.
             $table->string('email')->nullable();

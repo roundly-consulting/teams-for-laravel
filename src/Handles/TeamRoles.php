@@ -36,7 +36,7 @@ final readonly class TeamRoles
             TeamOperation::DefineRole,
             DefineTeamRoleAction::class,
             fn (DefineTeamRoleAction $action): TeamRole => $action->execute(new DefineTeamRoleData(
-                teamId: (int) $this->team->getKey(),
+                teamId: $this->team->getKey(),
                 key: $key,
                 name: $name,
                 permissions: $permissions,

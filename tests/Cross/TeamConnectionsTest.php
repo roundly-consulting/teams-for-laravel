@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\PackageToolkit\Enums\KeyType;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
+use RoundlyConsulting\Teams\Scoping\TeamKey;
 use RoundlyConsulting\Teams\Tests\User;
 
 it('connects two teams and lists partners of a type', function (): void {
@@ -73,7 +75,12 @@ it('connects a team to a user', function (): void {
     expect($team->isConnectedTo($user))->toBeTrue()
         ->and($team->connectablesOfType(User::class)->pluck('id')->all())->toBe([$user->getKey()])
         ->and($team->hasPermissionThroughConnection($user, 'delegate:admin'))->toBeTrue();
-});
+})->skip(
+    fn (): bool => TeamKey::type() !== KeyType::BigInt,
+    // connections.key_type types both ends of a connection; the fixture users stay bigint
+    // under TEAMS_TEST_TEAM_KEY, so a team-to-user connection has no single key type there.
+    'a team-to-user connection needs one key type for teams and users',
+);
 
 it('delegates to the connections package through the team handle', function (): void {
     $team = Team::factory()->create();

@@ -13,7 +13,7 @@ it('creates a team role override', function (): void {
     $team = Team::factory()->create();
 
     $role = app(DefineTeamRoleAction::class)->execute(new DefineTeamRoleData(
-        teamId: (int) $team->getKey(),
+        teamId: $team->getKey(),
         key: 'editor',
         name: 'Editor',
         permissions: ['posts.edit', new Permission('posts.publish')],
@@ -30,8 +30,8 @@ it('upserts without creating a duplicate', function (): void {
 
     $action = app(DefineTeamRoleAction::class);
 
-    $action->execute(new DefineTeamRoleData((int) $team->getKey(), 'editor', 'Editor', ['posts.edit']));
-    $action->execute(new DefineTeamRoleData((int) $team->getKey(), 'editor', 'Editor', ['posts.publish']));
+    $action->execute(new DefineTeamRoleData($team->getKey(), 'editor', 'Editor', ['posts.edit']));
+    $action->execute(new DefineTeamRoleData($team->getKey(), 'editor', 'Editor', ['posts.publish']));
 
     expect(TeamRole::query()->where('team_id', $team->getKey())->where('key', 'editor')->count())->toBe(1)
         ->and($team->teamRoles()->where('key', 'editor')->first()->permissions->all())->toBe(['posts.publish']);

@@ -18,8 +18,9 @@ function teamScopeColumn(string $column = 'team_id', bool $nullable = false): ar
     return collect($table->getColumns())->firstWhere('name', $column)->getAttributes();
 }
 
-it('types the column like the team model key, not like teams.key_type', function (?string $model, string $type): void {
-    config()->set('teams.key_type', 'ulid');   // the morph-column setting is irrelevant here
+it('types the column like the team model key, not like teams.key_type', function (?string $model, string $setting, string $type): void {
+    config()->set('teams.key_type', $setting === 'bigint' ? 'ulid' : 'bigint');   // the morph-column setting is irrelevant here
+    config()->set('teams.primary_key_type', $setting);
 
     if ($model !== null) {
         config()->set('teams.models.team', $model);
@@ -27,9 +28,13 @@ it('types the column like the team model key, not like teams.key_type', function
 
     expect(teamScopeColumn()['type'])->toBe($type);
 })->with([
-    'packaged team' => [null, 'bigInteger'],
-    'HasUlids team' => [UlidTeam::class, 'char'],
-    'HasUuids team' => [UuidTeam::class, 'uuid'],
+    'packaged team, bigint' => [null, 'bigint', 'bigInteger'],
+    'packaged team, uuid' => [null, 'uuid', 'uuid'],
+    'packaged team, ulid' => [null, 'ulid', 'char'],
+    // A subclass keying itself (the pre-setting way) wins over the setting, so its scoped
+    // columns keep matching the ids it writes; the doctor flags the disagreement.
+    'HasUlids team, setting left at bigint' => [UlidTeam::class, 'bigint', 'char'],
+    'HasUuids team, setting left at bigint' => [UuidTeam::class, 'bigint', 'uuid'],
 ]);
 
 it('indexes the column, constrains it onto the team table and can be nullable', function (): void {

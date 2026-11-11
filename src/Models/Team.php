@@ -21,6 +21,7 @@ use RoundlyConsulting\Teams\Bridges\Permissions\PermissionsBridge;
 use RoundlyConsulting\Teams\Database\Factories\TeamFactory;
 use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Exceptions\TeamsException;
+use RoundlyConsulting\Teams\Models\Concerns\HasConfigurableKey;
 use RoundlyConsulting\Teams\Models\Concerns\NestsTeams;
 use RoundlyConsulting\Teams\Roles\Permission;
 use RoundlyConsulting\Teams\Roles\Role;
@@ -32,12 +33,12 @@ use RoundlyConsulting\Teams\Support\TeamsConfig;
 use RoundlyConsulting\Teams\TeamsManager;
 
 /**
- * @property int $id
+ * @property int|string $id
  * @property string $name
  * @property bool $is_public
  * @property string|null $owner_type
  * @property int|null $owner_id
- * @property int|null $parent_id
+ * @property int|string|null $parent_id
  * @property Collection<string, mixed> $meta
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
@@ -58,6 +59,7 @@ class Team extends Model implements Connectable
         HasAddresses::addAddress insteadof HasContacts;
         HasContacts::addAddress as addContactAddress;
     }
+    use HasConfigurableKey;
     use HasConnections;
 
     /** @use HasFactory<TeamFactory> */

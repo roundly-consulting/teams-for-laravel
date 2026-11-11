@@ -22,7 +22,7 @@ use RoundlyConsulting\Teams\Support\TeamsConfig;
 
 /**
  * @property int $id
- * @property int $team_id
+ * @property int|string $team_id
  * @property string $requester_type
  * @property int $requester_id
  * @property string|null $requested_role

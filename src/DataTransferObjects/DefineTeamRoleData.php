@@ -10,7 +10,7 @@ final readonly class DefineTeamRoleData
 {
     /** @param list<string|Permission> $permissions */
     public function __construct(
-        public int $teamId,
+        public int|string $teamId,
         public string $key,
         public string $name,
         public array $permissions = [],

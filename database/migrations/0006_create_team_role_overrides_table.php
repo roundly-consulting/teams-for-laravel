@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use RoundlyConsulting\Teams\Support\TeamsSchema;
 
 return new class extends Migration
 {
@@ -12,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('team_role_overrides', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            TeamsSchema::teamForeignKey($table, 'team_id')->constrained('teams')->onDelete('cascade');
             $table->string('key');
             $table->string('name');
             $table->jsonb('permissions')->nullable();

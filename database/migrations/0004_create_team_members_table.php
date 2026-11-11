@@ -6,6 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use RoundlyConsulting\PackageToolkit\Enums\KeyType;
+use RoundlyConsulting\Teams\Support\TeamsSchema;
 
 return new class extends Migration
 {
@@ -15,7 +16,7 @@ return new class extends Migration
 
         Schema::create('team_members', function (Blueprint $table) use ($keyType): void {
             $table->id();
-            $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            TeamsSchema::teamForeignKey($table, 'team_id')->constrained('teams')->onDelete('cascade');
             $table->morphKey('member', $keyType, nullable: false);
             $table->string('role')->nullable();
             $table->foreignId('accepted_invite_id')->nullable()->index()

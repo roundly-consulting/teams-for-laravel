@@ -48,6 +48,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Team Primary Key Type
+    |--------------------------------------------------------------------------
+    |
+    | The type of the teams table's own "id", and of every column pointing at
+    | a team: "team_id" on the invites, members, join requests and role
+    | overrides tables, a team's "parent_id", and the "teamScope()" column of
+    | your scoped tables. Use "uuid" or "ulid" to key your teams that way: the
+    | packaged Team model then mints a time-ordered UUID (v7) or ULID itself.
+    | Set it before you run the migrations; the schema is fixed once they ran.
+    | Any other value throws an InvalidConfigurationException.
+    |
+    | This is not "key_type" above, which types the columns pointing at YOUR
+    | models (owner, member, inviter). A team subclass that uses HasUuids or
+    | HasUlids itself must match this setting; `php artisan teams:doctor`
+    | fails when the setting, the team model and the database disagree.
+    |
+    | Supported: "bigint", "uuid", "ulid"
+    |
+    */
+
+    'primary_key_type' => env('TEAMS_PRIMARY_KEY_TYPE', 'bigint'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Roles
     |--------------------------------------------------------------------------
     |

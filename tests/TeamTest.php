@@ -16,8 +16,9 @@ use RoundlyConsulting\Teams\Tests\User;
 it('has correct casts', function () {
     $team = new Team;
 
+    // An auto-incrementing key is cast to int; a uuid/ulid key (teams.primary_key_type) is not.
     expect($team->getCasts())->toEqual([
-        'id' => 'int',
+        ...($team->getIncrementing() ? ['id' => 'int'] : []),
         'meta' => 'collection',
         'is_public' => 'boolean',
         'deleted_at' => 'datetime',

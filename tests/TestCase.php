@@ -126,6 +126,7 @@ abstract class TestCase extends PackageTestCase
             // Keep the provider caches out of the way so each test reads fresh state.
             'options.cache.enabled' => false,
             'connections.cache.enabled' => false,
+            ...self::teamKeyConfig(),
             ...($this->loadsPermissions() ? [
                 'permissions.assignments.enabled' => true,
                 'teams.permissions.bridge' => $this->permissionsBridge(),
@@ -150,6 +151,35 @@ abstract class TestCase extends PackageTestCase
     protected function permissionsBridge(): bool
     {
         return self::bridgeFromEnvironment();
+    }
+
+    /**
+     * `TEAMS_TEST_TEAM_KEY=ulid` (or `uuid`) runs the WHOLE suite with teams keyed that way
+     * (its own CI job, on Postgres), the way a ULID-keyed host such as one whose company is a
+     * team runs it: `teams.primary_key_type` plus the key type of every sibling package whose
+     * polymorphic columns point at a team (options, addresses, contacts, team-to-team
+     * connections, permissions scopes). Users stay bigint, so `teams.key_type` does too, and
+     * approvals keeps bigint for the join requests it approves. Unset, nothing is added and
+     * the suite runs on the bigint default.
+     *
+     * @return array<string, string>
+     */
+    private static function teamKeyConfig(): array
+    {
+        $type = strtolower(trim((string) getenv('TEAMS_TEST_TEAM_KEY')));
+
+        if ($type === '' || $type === 'bigint') {
+            return [];
+        }
+
+        return [
+            'teams.primary_key_type' => $type,
+            'options.key_type' => $type,
+            'addresses.key_type' => $type,
+            'contacts.key_type' => $type,
+            'connections.key_type' => $type,
+            'permissions.assignments.scope_key_type' => $type,
+        ];
     }
 
     private static function bridgeFromEnvironment(): bool

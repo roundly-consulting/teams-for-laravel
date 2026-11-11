@@ -41,7 +41,8 @@ php artisan migrate
 
 Publish every tag: none of these packages auto-load their migrations, and the very first
 `Teams::create()` needs the `options` table. If your users have UUID/ULID keys, set
-`TEAMS_KEY_TYPE` **before** migrating.
+`TEAMS_KEY_TYPE` **before** migrating; to key the teams themselves by UUID/ULID, set
+`TEAMS_PRIMARY_KEY_TYPE` too.
 
 ## Usage
 

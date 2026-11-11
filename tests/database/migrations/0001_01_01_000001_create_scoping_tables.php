@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use RoundlyConsulting\Teams\Support\TeamsSchema;
 
 /**
  * Host tables for the team-scoping suite, built the way a host would: `teamScope()`.
@@ -40,14 +41,14 @@ return new class extends Migration
         // Another package's table: the team column and index the host added itself.
         Schema::create('vendor_tickets', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('team_id')->index();
+            TeamsSchema::teamForeignKey($table, 'team_id')->index();
             $table->string('subject');
             $table->timestamps();
         });
 
         Schema::create('unindexed_notes', function (Blueprint $table): void {
             $table->id();
-            $table->unsignedBigInteger('team_id');
+            TeamsSchema::teamForeignKey($table, 'team_id');
         });
 
         Schema::create('columnless_notes', function (Blueprint $table): void {

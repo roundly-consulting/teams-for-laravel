@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Validator;
+use RoundlyConsulting\PackageToolkit\Enums\KeyType;
 use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\Teams\Exceptions\TeamContextException;
 use RoundlyConsulting\Teams\Exceptions\TeamsException;
 use RoundlyConsulting\Teams\Facades\Teams;
 use RoundlyConsulting\Teams\Models\Team;
 use RoundlyConsulting\Teams\Rules\UniqueInTeam;
+use RoundlyConsulting\Teams\Scoping\TeamKey;
 use RoundlyConsulting\Teams\Tests\Fixtures\Scoping\Healthy\Document;
 use RoundlyConsulting\Teams\Tests\Fixtures\Scoping\Healthy\Project;
 use RoundlyConsulting\Teams\Tests\Fixtures\Scoping\Healthy\ScopedTicket;
@@ -289,6 +291,10 @@ describe('the teamScope() migration macro', function (): void {
             ->and($foreign['foreign_table'])->toEndWith('teams')
             ->and($foreign['foreign_columns'])->toBe(['id'])
             ->and($index)->not->toBeNull()
-            ->and($schema->getColumnType('projects', 'team_id'))->toBeIn(['integer', 'bigint', 'int8']);
+            ->and($schema->getColumnType('projects', 'team_id'))->toBeIn(match (TeamKey::type()) {
+                KeyType::BigInt => ['integer', 'bigint', 'int8'],
+                KeyType::Uuid => ['uuid', 'char', 'varchar'],
+                KeyType::Ulid => ['bpchar', 'char', 'varchar'],
+            });
     });
 });

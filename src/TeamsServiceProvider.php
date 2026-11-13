@@ -12,7 +12,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\ForeignKeyDefinition;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Log\Context\Events\ContextHydrated;
+use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Queue;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
@@ -48,6 +50,7 @@ use RoundlyConsulting\Teams\Roles\DatabaseRoleProvider;
 use RoundlyConsulting\Teams\Roles\InMemoryRoleProvider;
 use RoundlyConsulting\Teams\Roles\PermissionRegistry;
 use RoundlyConsulting\Teams\Roles\TeamRoleResolver;
+use RoundlyConsulting\Teams\Scoping\QueuedJobContext;
 use RoundlyConsulting\Teams\Scoping\TeamContext;
 use RoundlyConsulting\Teams\Scoping\TeamScopeColumn;
 use RoundlyConsulting\Teams\Support\InviteModel;
@@ -135,6 +138,10 @@ final class TeamsServiceProvider extends PackageServiceProvider
         // SCOPED like Laravel's own Context repository it fronts: the loaded team models
         // and the withoutTeamScope() bypass belong to one request or job, never the next.
         $this->app->scoped(TeamContext::class);
+
+        // A singleton: it holds a sync-run dispatcher's team context across the job, and
+        // nothing per request or job.
+        $this->app->singleton(QueuedJobContext::class);
     }
 
     public function boot(): void
@@ -149,6 +156,7 @@ final class TeamsServiceProvider extends PackageServiceProvider
         $this->registerGate();
         $this->registerContextMiddleware();
         $this->announceRestoredContext();
+        $this->keepContextOutOfMarkedJobs();
 
         Event::listen(ApprovalRequestResolved::class, SyncJoinRequestStatusFromApproval::class);
 
@@ -240,6 +248,28 @@ final class TeamsServiceProvider extends PackageServiceProvider
             $event->job->fail($revocation);
 
             throw $revocation;
+        });
+    }
+
+    /**
+     * Jobs marked `WithoutTeamContext` carry no team context in their payload.
+     *
+     * The payload hook is registered once every provider has booted, so it runs after
+     * Laravel's own context hook (ContextServiceProvider) and finds the dehydrated context
+     * to strip. A sync-run marked job gives its dispatcher the team context back when it is
+     * over (`JobAttempted` fires after success and failure alike).
+     */
+    private function keepContextOutOfMarkedJobs(): void
+    {
+        $this->app->booted(function (): void {
+            Queue::createPayloadUsing(
+                fn (mixed $connection, mixed $queue, array $payload): array => $this->app->make(QueuedJobContext::class)
+                    ->payload(is_string($connection) ? $connection : null, $payload),
+            );
+        });
+
+        Event::listen(JobAttempted::class, function (JobAttempted $event): void {
+            $this->app->make(QueuedJobContext::class)->resume($event->job);
         });
     }
 

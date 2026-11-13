@@ -6,6 +6,11 @@ All notable changes to `teams-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+### Added
+
+- `RoundlyConsulting\Teams\Contracts\WithoutTeamContext`: a marker for queued jobs that take their team as an argument (seat sync, metering). Its payload carries no team context, so nothing is restored and `teams.context.recheck_queued_jobs` never fails it — such jobs are typically dispatched exactly when a member leaves or a team is deleted. Honoured on jobs, queued listeners, queued notifications and queued mailables, encrypted or not. The job runs with no current team, so it must scope its queries by the team it receives (`Teams::runAs($team, …)`, `forTeam()`). On the `sync` queue the dispatcher gets its team context back after the job.
+- `Teams::withoutContext(Closure $callback)` (`RunWithoutTeamContextAction`): runs the callback with the team context suspended — jobs dispatched inside carry none — and restores it afterwards, also on an exception; nests safely. A returned `PendingDispatch` is dispatched inside and `null` returned, like `runAs()`. Not recorded by `Teams::fake()`.
+
 ## 2.3.0 - 2026-11-11
 
 ### Added

@@ -255,7 +255,8 @@ return [
     | before it runs and fails (TeamContextException, no retry) when the
     | member was removed, expired or deleted in the meantime. Contexts set
     | with the unchecked Teams::setCurrent() carry no member and are not
-    | re-checked.
+    | re-checked. Jobs marked WithoutTeamContext, or dispatched inside
+    | Teams::withoutContext(), carry no context at all.
     |
     */
 

@@ -13,6 +13,7 @@ use RoundlyConsulting\Teams\Actions\CreateTeamAction;
 use RoundlyConsulting\Teams\Actions\InspectTeamKeysAction;
 use RoundlyConsulting\Teams\Actions\InspectTeamScopesAction;
 use RoundlyConsulting\Teams\Actions\RunAsTeamAction;
+use RoundlyConsulting\Teams\Actions\RunWithoutTeamContextAction;
 use RoundlyConsulting\Teams\Actions\SetCurrentTeamAction;
 use RoundlyConsulting\Teams\Actions\SetCurrentTeamsAction;
 use RoundlyConsulting\Teams\Actions\SwitchTeamAction;
@@ -178,6 +179,22 @@ class TeamsManager
     public function runAs(Team $team, Closure $callback): mixed
     {
         return $this->container->make(RunAsTeamAction::class)->execute($team, $callback);
+    }
+
+    /**
+     * Run `$callback` with the team context suspended, then restore it — also on an
+     * exception. Jobs dispatched inside carry no team context: nothing is restored or
+     * re-checked when they start, so they must scope every query by the team they receive.
+     * For jobs marked `Contracts\WithoutTeamContext` this happens on its own.
+     *
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $callback
+     * @return (TResult is PendingDispatch ? null : TResult)
+     */
+    public function withoutContext(Closure $callback): mixed
+    {
+        return $this->container->make(RunWithoutTeamContextAction::class)->execute($callback);
     }
 
     /**

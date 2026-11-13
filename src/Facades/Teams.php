@@ -22,6 +22,7 @@ use RoundlyConsulting\Teams\Testing\TeamsFake;
  * @method static void switchTo(\RoundlyConsulting\Teams\Models\Team $team, ?\Illuminate\Database\Eloquent\Model $user = null)
  * @method static void setCurrentMany(iterable<\RoundlyConsulting\Teams\Models\Team> $teams, ?\Illuminate\Database\Eloquent\Model $user = null)
  * @method static mixed runAs(\RoundlyConsulting\Teams\Models\Team $team, \Closure $callback)
+ * @method static mixed withoutContext(\Closure $callback)
  * @method static mixed withoutTeamScope(\Closure $callback)
  * @method static list<\RoundlyConsulting\Teams\DataTransferObjects\ScopedModelReport> scopedModels()
  * @method static \RoundlyConsulting\Teams\DataTransferObjects\TeamKeyReport teamKeys()

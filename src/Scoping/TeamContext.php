@@ -21,7 +21,9 @@ use RoundlyConsulting\Teams\Support\TeamModel;
  * queue story: Laravel serialises the context into every job payload dispatched while it
  * is set and hydrates it — after flushing — when the job runs, so a job restores exactly
  * the team(s) of the code that dispatched it, and a job dispatched without one runs
- * without one. Hidden, so the keys never reach a log line. A fresh console process or a
+ * without one. A job marked `Contracts\WithoutTeamContext`, or dispatched inside
+ * `Teams::withoutContext()`, carries none ({@see QueuedJobContext}). Hidden, so the keys
+ * never reach a log line. A fresh console process or a
  * scheduled task starts with an empty Context, hence no team.
  *
  * A context set through a membership check (`Teams::switchTo()`, `Teams::setCurrentMany()`,
